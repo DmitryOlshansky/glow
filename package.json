@@ -1,6 +1,6 @@
 {
 	"scripts": {
-		"test": "nyc ava peg_test.js"
+		"test": "nyc ava *_test.js"
 	},
 	"devDependencies": {
 		"ava": "^2.4.0",

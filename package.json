@@ -1,0 +1,9 @@
+{
+	"scripts": {
+		"test": "nyc ava peg_test.js"
+	},
+	"devDependencies": {
+		"ava": "^2.4.0",
+		"nyc": "^15.0.0"
+	}
+}

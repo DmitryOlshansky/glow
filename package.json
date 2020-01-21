@@ -1,4 +1,5 @@
 {
+	"name": "glowlet.js",
 	"scripts": {
 		"test": "nyc ava *_test.js"
 	},

@@ -64,7 +64,7 @@ test('peg repeat', t => {
 
 test('peg skipping & map', t => {
     const bin = peg.matchWhile(c => c >= '0' && c <= '9', 1).map(v => parseInt(v))
-    t.deepEqual(bin.parse('456'), 456)
+    t.deepEqual(bin.parse('456['), 456)
     t.deepEqual(bin.parse(' 01'), undefined)
     // skipping map is valid parser
     t.deepEqual(bin.skipping(peg.match(' ')).parse(' 01'), 1)
@@ -76,6 +76,8 @@ test('peg skipping & map', t => {
     t.deepEqual(anybin.parse(''), '')
     t.deepEqual(anybin.parse('1'), '1')
     t.deepEqual(anybin.parse('a'), '')
+
+    t.deepEqual(peg.seq(peg.match('1'), peg.match('2')).map( x => x[0] + x[1]).parse('12'), '12')
 })
 
 test('peg lazy', t => {

@@ -1,5 +1,5 @@
 # May change in future
-type Id = array[u8, 16] # public key - ed25519
+type Id = array[u8, 32] # public key - ed25519
 type SecretKey = array[u8, 32] # secret key for Id
 type Signature = array[u8, 64] # signature of Id key
 type Addr = array[u8, 16] # addr, derived from Id
@@ -48,14 +48,14 @@ type Resource = struct {
 }
 
 type GlowPacket = struct {
-    src: Id
-    dest: Id
+    src: Addr
+    dest: Addr
     nonce: Nonce
     type: u8    # message, request, response, error, cancel
     offset: vu  # offset for this fragment
     size: vu    # total size of fragmented packet
     payload: array[u8]
-    mac: array[u8, 16]
+    mac: MAC
 }
 
 # For any message sender knows it's nonce
@@ -84,7 +84,7 @@ proto glowlet {
 
 # link has a unique contract 
 # owner task gets a separate send/recv raw packet queues (either via shared memory with proto glowlet or just an embedding API)
-# normally each process has exactly one send and one recv packet queue and it's packets are (pre-post) processed by proto glowlet (signatures etc.)
+# normally each process has exactly one send and one recv packet queue and it's packets are (pre-post) processed by glowlet (signatures etc.)
 proto link {
     # packet that will hit the routing framework of the link's parent glowlet (called by owner task)
     raw outbound(packet: GlowPacket)

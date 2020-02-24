@@ -33,7 +33,6 @@ function pf(parser) {
         if(r.result !== undefined) return r.result
         else {
             const message = formatError(input.input, r)
-            console.error(typeof(r))
             throw new Error(message)
         }
     }
@@ -80,7 +79,6 @@ function any() {
             }
             p.ofs = save
         }
-        //console.log(err)
         return err
     })
 }
@@ -112,7 +110,6 @@ function terminated(parser, end_parser) {
             let save = p.ofs
             let r = parser(p)
             if (r.result === undefined) {
-                console.log(r)
                 p.ofs = save
                 let fin = end_parser(p)
                 if (fin.result === undefined) {

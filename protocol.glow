@@ -1,0 +1,139 @@
+# May change in future
+type Id = array[u8, 16] # public key - ed25519
+type SecretKey = array[u8, 32] # secret key for Id
+type Signature = array[u8, 64] # signature of Id key
+type Addr = array[u8, 16] # addr, derived from Id
+
+type PubKey = array[u8, 32] # public key in key exchange
+type AeadKey = array[u8, 32]
+
+type MAC = array[u8, 16] # for reference the size of AEAD tag
+type Nonce = array[u8, 24] # nonce that identifies each request, nodes use it to dedup requests (has time based + counter based parts)
+
+type KeyExchange = struct {
+    id: PubKey
+    pk: PubKey
+    signature: Signature # signed by cluster secret key
+}
+
+type LinkClass = struct {
+    speed: u8   # 1 + log10 scale of kb/s 
+    latency: u8 # order of magnitude in 1 + log10 scale of us, 0 - immediate (shared memory)
+    flags: u8   # bits: 0 - reliable/unreliable, 1 - ordered/unordered, 2 - encrypted/plain-text
+}
+
+type LSP = struct {
+    up: Id # up > down lexicographically
+    down: Id
+    state: u8
+    class: LinkClass
+    mtu: vu
+    rev: vu
+}
+
+type LinkState = struct {
+    peer: Id
+    state: u16
+    mtu: vu
+}
+
+type Ownership = struct {
+    master: vu
+    slave: vu
+}
+
+type Resource = struct {
+    type: Id
+    id: Id
+}
+
+type GlowPacket = struct {
+    src: Id
+    dest: Id
+    nonce: Nonce
+    type: u8    # message, request, response, error, cancel
+    offset: vu  # offset for this fragment
+    size: vu    # total size of fragmented packet
+    payload: array[u8]
+    mac: array[u8, 16]
+}
+
+# For any message sender knows it's nonce
+# every time there is a need for nonce with signature, 
+# that nonce is prepended : signature = Sign(nonce || flatten(args - signature))
+proto glowlet {
+    # These 2 raw messages shuld be sent by both parties simultaneously
+    # raw - without MAC and encryption, keyExchange pairs are persisted for short TTL
+    raw start(kx: KeyExchange)
+    # establish our side of link with this node by providing our key
+    raw establish(kxNonce: Nonce, encryptedKey: AeadKey)
+
+    # HB is sent over established links periodically with cluster addr as destination
+    # First case - if there is any change detected in response (by rev) - flooded to all neibours except this one
+    # Second case - if a new addr is discovered - floods to all of new addrs
+    # (both could apply)
+    def heartbeat(resources: array[Resource], links: array[LSP], owners: array[Ownership]): none
+
+    # label is a human-readable name (must follow a convention and be node-wide unique)
+    # signature is done by key for id
+    def create(label: array[u8], type: Id, id: Id, signature: Signature): Id
+
+    # same for reverse operation, needs secret key for that resource Id
+    def destroy(id: Id, signature: Signature): void
+}
+
+# link has a unique contract 
+# owner task gets a separate send/recv raw packet queues (either via shared memory with proto glowlet or just an embedding API)
+# normally each process has exactly one send and one recv packet queue and it's packets are (pre-post) processed by proto glowlet (signatures etc.)
+proto link {
+    # packet that will hit the routing framework of the link's parent glowlet (called by owner task)
+    raw outbound(packet: GlowPacket)
+    # packet that is to be sent, this is called by glowlet 
+    raw inbound(packet: GlowPacket)
+    # configure link parameters
+    def configure(up: u8, mtu: vu, class: LinkClass): void
+}
+
+# foreign network interface
+# protocol is one of simple lower-case strings
+# for flow:
+# udp
+# rdp 
+# ...
+# for seq:
+# tcp  
+# ws/wss
+# http/https
+# ....
+
+proto fni {
+    def seq(protocol: array[u8]): seq & socket
+    def flow(protocol: array[u8]): flow & socket
+}
+
+# fni socket operations, in reality it's a connection pool
+proto fni_socket {
+    def bind(fna: array[u8]): void
+    def connect(fna: array[u8]): void
+    def listen(backlog: vu): void # unlike BSD's sockets all connections are implicitly accepted on the very same object
+    def close(): void
+}
+
+# base for resources which can be (un)subscribed to
+proto publisher {
+    def subscribe(id: Id): void
+    def unsubscribe(id: Id): void
+}
+
+# 
+proto seq : publisher {
+    # seqNum == 0 -> new stream of data, start of a session sess
+    def write(sess: array[u8], seqNo: u64, data: array[u8]): void   
+    def end(abrupt: u8) # if abrupt != 0 -> terminate forcibly (e.g. cancel transaction)
+}
+
+# 
+proto flow : publisher {
+    # TODO: maybe add dest identifier e.g. for UDP {send,recv}msg style connection-less flows
+    def write(msg: array[u8]): void
+}

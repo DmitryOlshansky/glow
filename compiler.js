@@ -6,18 +6,20 @@ const repeat = peg.repeat
 const any = peg.any
 const seq = peg.seq
 
+// ignorable stuff
+const ws = peg.matchWhile(c => c == ' ' || c == '\t' || c == '\v' || c == '\r' || c == '\n', "whitespace", 1)
+const comment = seq(peg.match('#'), peg.matchWhile(c => c != '\n' && c != '\r', "non-newline"))
+const ignored = repeat(any(comment, ws))
+
 // building blocks
-const ws = peg.skipWhile(c => c == ' ' || c == '\t' || c == '\v' || c == '\r' || c == '\n')
 const opt = parser => repeat(parser, 0, 1).map(v => v.length ? v[0] : null)
 const listOf = parser => seq(parser, repeat(seq(lit(','), parser))).map(pair => [pair[0], ...pair[1].map(x => x[1])])
-const lit = text => peg.match(text).skipping(ws)
+const lit = text => peg.match(text).skipping(ignored)
 
-// building up lexical for types
-const comment = seq(peg.match('#'), peg.skipWhile(c => c != '\n' && c != '\r')).skipping(ws)
+const id = peg.seq(peg.matchWhile(c => /[A-Za-z_]/.test(c), "alpha", 1), peg.matchWhile(c => /[A-Za-z_0-9]/.test(c), "alphanumeric"))
+    .map(args => args[0] + args[1]).skipping(ignored)
 
-const id = peg.seq(peg.matchWhile(c => /[A-Za-z_]/.test(c), 1), peg.matchWhile(c => /[A-Za-z_0-9]/.test(c))).skipping(ws).map(args => args[0] + args[1])
-
-const number = peg.matchWhile(c => /\d/.test(c), 1).skipping(ws).map(arg => parseInt(arg, 10))
+const number = peg.matchWhile(c => /\d/.test(c), "digit", 1).skipping(ignored).map(arg => parseInt(arg, 10))
 
 const type_expr = peg.lazy()
 
@@ -41,10 +43,13 @@ const generic_type = seq(id, lit('['), listOf(generic_type_arg), lit(']')).map(a
 
 const basic_type_expr = any(builtin_type, generic_type, struct_def, id.map(name => types.alias_type(name)))
 
-peg.bind(type_expr, any(
-    basic_type_expr, 
-    seq(basic_type_expr, repeat(seq(lit('&'), basic_type_expr)))
-))
+peg.bind(type_expr, seq(basic_type_expr, repeat(seq(lit('&'), basic_type_expr).map(args => args[1]))).map(args => {
+    if (args[1].length > 0) {
+        return types.and_type([args[0], ...args[1]])
+    }
+    else
+        return args[0] 
+}))
 
 // this is type definition
 const type_def = seq(lit('type'), id, lit('='), type_expr).map(args => {
@@ -56,7 +61,7 @@ const type_def = seq(lit('type'), id, lit('='), type_expr).map(args => {
 const ids = listOf(id)
 const arg = seq(id, lit(':'), type_expr)
 const args = listOf(arg)
-const method = seq(lit('def'), id, lit('('), opt(args), lit(')'), opt(seq(lit(':'), type_expr))).map(args => {
+const method = seq(any(lit('def'), lit('raw')), id, lit('('), opt(args), lit(')'), opt(seq(lit(':'), type_expr))).map(args => {
     const name = args[1]
     const params = args[2] ? args[2][0] : []
     const reply = args[4] ? args[4][0][1] : undefined
@@ -72,6 +77,9 @@ const proto_def = seq(lit('proto'), id, opt(seq(lit(':'), ids)), lit('{'), metho
     return types.add_type(name, types.protocol_type(parents, methods))
 })
 
+const proto_module = peg.terminated(any(type_def, proto_def), peg.eof.skipping(ignored)).map(args => {
+    return args[0];
+})
 
 exports.number = number
 exports.id = id
@@ -83,4 +91,6 @@ exports.type_expr = type_expr
 // top-level stuff
 exports.type_def = type_def
 exports.comment = comment
+exports.ignored = ignored
 exports.proto_def = proto_def
+exports.proto_module = proto_module

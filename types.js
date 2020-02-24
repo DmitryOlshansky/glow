@@ -67,7 +67,7 @@ const generic_type = (name, template) => add_type(name, {
     alias: name,
     kind: 'generic',
     instantiate: function (args) {
-        return add_type(name+"["+args.join(",")+"]", template(args))
+        return template(args)
     },
     resolve: function() {
         context.error("Cannot use generic "+name+" as type name")

@@ -1,16 +1,14 @@
-const typesystem = require('./typesystem')
+package org.glow.proto
 
-const peg = require('./peg')
-
-
+/* TODO: translate from JS
 function compiler () {
     const types = typesystem.create()
     const repeat = peg.repeat
-    const any = peg.any
-    const seq = peg.seq
+            const any = peg.any
+            const seq = peg.seq
 
-    // ignorable stuff
-    const ws = peg.matchWhile(c => c == ' ' || c == '\t' || c == '\v' || c == '\r' || c == '\n', "whitespace", 1)
+            // ignorable stuff
+            const ws = peg.matchWhile(c => c == ' ' || c == '\t' || c == '\v' || c == '\r' || c == '\n', "whitespace", 1)
     const comment = seq(peg.match('#'), peg.matchWhile(c => c != '\n' && c != '\r', "non-newline"))
     const ignored = repeat(any(comment, ws))
 
@@ -20,7 +18,7 @@ function compiler () {
     const lit = text => peg.match(text).skipping(ignored)
 
     const id = peg.seq(peg.matchWhile(c => /[A-Za-z_]/.test(c), "alpha", 1), peg.matchWhile(c => /[A-Za-z_0-9]/.test(c), "alphanumeric"))
-        .map(args => args[0] + args[1]).skipping(ignored)
+    .map(args => args[0] + args[1]).skipping(ignored)
 
     const number = peg.matchWhile(c => /\d/.test(c), "digit", 1).skipping(ignored).map(arg => parseInt(arg, 10))
 
@@ -51,7 +49,7 @@ function compiler () {
             return types.and_type([args[0], ...args[1]])
         }
         else
-            return args[0] 
+            return args[0]
     }))
 
     // this is type definition
@@ -89,7 +87,7 @@ function compiler () {
         generic_type_arg: generic_type_arg,
         generic_type: generic_type,
         type_expr: type_expr,
-        // top-level stuff
+                // top-level stuff
         type_def: type_def,
         comment: comment,
         ignored: ignored,
@@ -97,5 +95,4 @@ function compiler () {
         proto_module: proto_module
     }
 }
-
-exports.create = compiler
+*/

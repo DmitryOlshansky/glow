@@ -1,3 +1,6 @@
+package org.glow.proto
+
+/*
 const codec = require('./codec')
 
 class TypeSystem {
@@ -12,7 +15,7 @@ class TypeSystem {
         this.basic_type('i16', codec.enc_i16, codec.dec_i16)
         this.basic_type('i32', codec.enc_i32, codec.dec_i32)
         this.basic_type('vu', codec.enc_vu, codec.dec_vu)
-        
+
         this.array_type = this.generic_type('array', (base, size) => {
             return {
                 kind: 'instance',
@@ -29,7 +32,7 @@ class TypeSystem {
 
         this.u64 = this.add_type("u64", this.array_type.instantiate([this.u8, 8]))
         this.none = this.basic_type('none', () => {}, () => {})
-        
+
     }
 
     error(msg) {
@@ -119,7 +122,7 @@ class TypeSystem {
         return {
             kind: 'struct',
             fields: fields,
-            resolve: function() { 
+            resolve: function() {
                 // resolve all types
                 this.fields = this.fields.map(pair => [pair[0], pair[1].resolve()])
                 this.enc = codec.enc_struct(this.fields.map(p => [p[0], p[1].enc]))
@@ -152,7 +155,7 @@ class TypeSystem {
         return {
             name: name,
             kind: 'method',
-            args: this.struct_type(args), 
+            args: this.struct_type(args),
             reply: reply,
             resolve: function() {
                 this.args = this.args.resolve()
@@ -173,5 +176,4 @@ class TypeSystem {
         }
     }
 }
-
-exports.create = () => new TypeSystem();
+ */

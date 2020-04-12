@@ -100,8 +100,8 @@ fun<T> repeat(name: String, peg: Peg<T>, min: Int = 0, max: Int = 1_000_000_000)
                 }
                 is Got -> items.add(r.value)
             }
-            current = next
             if (i >= min) last = current
+            current = next
         }
         return current to Got(items)
     }

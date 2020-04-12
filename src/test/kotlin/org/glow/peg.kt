@@ -62,11 +62,11 @@ class TestPeg {
         val manyOnes = repeat("ones-1", match("1"), 1, 2)
                 .flatMap(repeat("ones-2", match("1"), 1, 2))
                 .flatMap(EOF).map { it.first }
-        
-        assertEquals(Got("11".pieces() to "11".pieces()), manyOnes.parse("1111"))
+
         assertEquals(Got("11".pieces() to "1".pieces()), manyOnes.parse("111"))
+        assertEquals(Got("11".pieces() to "11".pieces()), manyOnes.parse("1111"))
         // greedy
-        assertEquals(Error("ones-2", 2), manyOnes.parse("11"))
+        assertEquals(Error("flatMap", 2), manyOnes.parse("11"))
 
         val inf = repeat("As", match("A"))
         val s = "A".repeat(1000) + "B"

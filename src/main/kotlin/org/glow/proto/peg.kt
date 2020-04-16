@@ -89,18 +89,16 @@ fun<T> any(name: String, vararg pegs: Peg<T>): Peg<T> = object : Peg<T>() {
 fun<T> repeat(name: String, peg: Peg<T>, min: Int = 0, max: Int = 1_000_000_000): Peg<List<T>> = object : Peg<List<T>>() {
     override fun apply(t: State): Pair<State, Parsed<List<T>>> {
         var current = t
-        var last = t
         val items = mutableListOf<T>()
         for (i in 0 until max) {
             val (next, r) = peg.apply(current)
             when (r) {
                 is Error -> return when {
-                    i >= min -> last to Got(items)
-                    else -> last to Error(name, current.ofs)
+                    i >= min -> current to Got(items)
+                    else -> t to Error(name, current.ofs)
                 }
                 is Got -> items.add(r.value)
             }
-            if (i >= min) last = current
             current = next
         }
         return current to Got(items)

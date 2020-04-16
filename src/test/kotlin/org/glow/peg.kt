@@ -5,7 +5,9 @@ import org.junit.Test
 import kotlin.test.assertEquals
 
 class TestPeg {
-    
+    private fun String.pieces() = this.split("").subList(1, this.length+1)
+    private fun String.gotList() = Got(this.split("").subList(1, this.length+1))
+
     @Test
     fun basics() {
         val a = match("a")
@@ -40,11 +42,24 @@ class TestPeg {
         assertEquals(Got("!!"), atLeastTwoEx.parse("!!"))
         assertEquals(Error("two", 0), atLeastTwoEx.parse("!"))
     }
+
+    @Test
+    fun eof() {
+        assertEquals(Got(Unit), EOF.parse(""))
+        assertEquals(Got(Unit), match("a").flatMap(EOF).map { it.second }.parse("a"))
+        val three = repeat("rep", match("a"), 1, 2).flatMap(match("a")).flatMap(EOF).map {
+            it.first
+        }
+        assertEquals(Got("aa".pieces() to "a"), three.parse("aaa"))
+        val three2 = match("a").flatMap(repeat("rep", match("a"), 1, 2)).flatMap(EOF).map {
+            it.first
+        }
+        assertEquals(Got("a" to "aa".pieces()), three2.parse("aaa"))
+        assertEquals(Got("a" to "a".pieces()), three2.parse("aa"))
+    }
     
     @Test
     fun repeat() {
-        fun String.pieces() = this.split("").subList(1, this.length+1)
-        fun String.gotList() = Got(this.split("").subList(1, this.length+1))
         val bin8 = repeat("bin8", any("binary", match("0"), match("1")), 0, 8)
 
         assertEquals("01010101".gotList(), bin8.parse("01010101"))

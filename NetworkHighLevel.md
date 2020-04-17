@@ -1,7 +1,22 @@
 
 Glow Resource Request Protocol
 
-Addr(ess)identifies:
+Each resource in the Glow network has a public key which is known simply as Id.
+
+Resources such as filesystems have there own tokens and sub-addresses (such as path)
+meaning that there are user-level objects that do not have Id per see, however their Id 
+has URI as follows:
+
+``` 
+glow://<Id>/<resource-specific-identifier-if-any>
+```
+
+```
+# RPC call to a method with such an identifer is then:
+glow://<Id>/<resource-specific-identifier-if-any>?method-call-name
+```
+
+
 1. originator of message - on behalf of which resource the request is done.
 2. target resource that must be manipulated with a specific call.
 

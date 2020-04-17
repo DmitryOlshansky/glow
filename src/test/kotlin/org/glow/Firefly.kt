@@ -1,9 +1,10 @@
-package org.glow.serialization
+package org.glow
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.dumps
 import kotlinx.serialization.loads
+import org.glow.serialization.Firefly
 import org.junit.Test
 import kotlin.test.assertEquals
 
@@ -33,6 +34,9 @@ class TestFirefly {
         }
     }
 
+    @Serializable
+    data class WithLists(val list: List<String>, val map: Map<Short, Double>)
+
     val firefly = Firefly()
 
     @Test
@@ -44,7 +48,7 @@ class TestFirefly {
     }
 
     @Test
-    fun complex() {
+    fun struct() {
         val packet = Packet(0x1234_5678_90, 0x90_8765_4321, ByteArray(2) {
             it.toByte()
         })
@@ -53,4 +57,11 @@ class TestFirefly {
         assertEquals(packet, roundTrip)
     }
 
+    @Test
+    fun listsMaps() {
+        val withLists = WithLists(listOf("abc", "edfgh"), mapOf(32.toShort() to 1.5, 900.toShort() to Double.NEGATIVE_INFINITY))
+        val encoded = firefly.dump(WithLists.serializer(), withLists)
+        val roundTrip = firefly.load(WithLists.serializer(), encoded)
+        assertEquals(withLists, roundTrip)
+    }
 }

@@ -105,15 +105,20 @@ fun<T> repeat(name: String, peg: Peg<T>, min: Int = 0, max: Int = 1_000_000_000)
     }
 }
 
-fun<T, U, R> seq(first: Peg<T>, second: Peg<U>, cons: (T, U) -> R): Peg<R> =
-        first.flatMap(second).map { (first, second) ->
-            cons(first, second)
-        }
+fun<A, B, R> seq(first: Peg<A>, second: Peg<B>, cons: (A, B) -> R): Peg<R> =
+    first.flatMap(second).map { (head, tail) ->
+        cons(head, tail)
+    }
 
-fun <T, U, S, R> seq(first: Peg<T>, second: Peg<U>, third: Peg<S>, cons: (T, U, S) -> R): Peg<R> =
-        first.flatMap(second).flatMap(third).map { (first, second) ->
-            cons(first.first, first.second, second)
-        }
+fun <A, B, C, R> seq(first: Peg<A>, second: Peg<B>, third: Peg<C>, cons: (A, B, C) -> R): Peg<R> =
+    first.flatMap(second).flatMap(third).map { (head, tail) ->
+        cons(head.first, head.second, tail)
+    }
+
+fun <A, B, C, D, R> seq(first: Peg<A>, second: Peg<B>, third: Peg<C>, fourth: Peg<D>, cons: (A, B, C, D) -> R): Peg<R> =
+    first.flatMap(second).flatMap(third).flatMap(fourth).map { (head, tail) ->
+        cons(head.first.first, head.first.second, head.second, tail)
+    }
 
 class LazyPeg<T>(var wrapped: Peg<T>? = null): Peg<T>() {
     override fun apply(t: State): Pair<State, Parsed<T>> =

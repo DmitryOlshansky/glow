@@ -4,7 +4,7 @@ import org.glow.proto.*
 import org.junit.Test
 import kotlin.test.assertEquals
 
-class TestPeg {
+class PegTest {
     private fun String.pieces() = this.split("").subList(1, this.length+1)
     private fun String.gotList() = Got(this.split("").subList(1, this.length+1))
 

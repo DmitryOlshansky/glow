@@ -9,7 +9,7 @@ import org.junit.Test
 import kotlin.test.assertEquals
 
 
-class TestFirefly {
+class FireflyTest {
 
     @Serializable
     data class Packet(val from: Long, val to: Long, val data: ByteArray) {

@@ -100,6 +100,14 @@ class PegTest {
     }
 
     @Test
+    fun skipping() {
+        val peg = match("word").skipping(sliceMatching("whitespace", 0) {
+            it.isWhitespace()
+        })
+        assertEquals(Got("word"), peg.parse(" word"))
+    }
+
+    @Test
     fun format() {
         val text = "1\n2\n3\n4\n5\n6\n7"
         val err = Error("msg", 7)

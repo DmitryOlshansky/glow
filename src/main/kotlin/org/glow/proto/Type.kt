@@ -37,8 +37,16 @@ sealed class Type {
                 return result
             }
         }
+
+        override fun equals(other: Any?) = when(other) {
+            is Layout -> name == other.name && members == other.members
+            else -> false
+        }
+
+        override fun hashCode(): Int = 31 * name.hashCode() + members.hashCode()
     }
 
+    // there might be a way to fold this type into Layout class but no idea for now
     class DynamicArray(val base: Type): Type() {
         override fun serializer(): KSerializer<Any> = object : KSerializer<Any> {
             override val descriptor: SerialDescriptor
@@ -72,6 +80,12 @@ sealed class Type {
                 }
             }
         }
+        override fun equals(other: Any?) = when(other) {
+            is DynamicArray -> base == other.base
+            else -> false
+        }
+
+        override fun hashCode(): Int = base.hashCode()
     }
 
 
@@ -141,27 +155,43 @@ sealed class Type {
     }
 
     class Method(val kind: MethodKind, name: String, val args: List<Pair<String, Type>>, val ret: Type):
-            Layout(name, (listOf("method id" to VarInt) + args).asSequence())
+            Layout(name, (listOf("method id" to VarInt) + args).asSequence()) {
+        override fun equals(other: Any?) = when(other) {
+            is Method ->  name == other.name && kind == other.kind && args == other.args && ret == other.ret
+            else -> false
+        }
+
+        override fun hashCode(): Int {
+            var result = 127 * ret.hashCode() + 31 * kind.hashCode() + args.hashCode()
+            result = 31 * result + name.hashCode()
+            return result
+        }
+    }
 
     // extends list should be protocols, but there is no way to know until types are resolved and semantic is done
     class Protocol(name: String, val extends: List<Type>, val methods: List<Method>):
-            Layout(name, sequenceOf("id" to DynamicArray(Byte)))
+            Layout(name, sequenceOf("id" to DynamicArray(Byte))) {
+
+        override fun equals(other: Any?) = when(other) {
+            is Protocol -> name == other.name && extends == other.extends && methods == other.methods
+            else -> false
+        }
+
+        override fun hashCode(): Int = 127 * name.hashCode() + 31 * extends.hashCode() + methods.hashCode()
+    }
 
     // Alias - a temporary type created on demand before full semantic analysis is done
-    class Alias(val name: String, val system: TypeSystem) : Type() {
+    data class Alias(val name: String, val system: TypeSystem) : Type() {
         override fun resolve(): Type = system.resolve(name)
         override fun serializer(): KSerializer<Any> = throw unresolvedAliasError
     }
 
-    class Generic(val name: String, val args: List<Type>) : Type() {
+    data class Generic(val name: String, val args: List<Type>) : Type() {
         override fun serializer(): KSerializer<Any> = throw genericTypeSerializer
         fun instantiate(args: List<Type>): Type = TODO("not implemented yet")
     }
 
-    class And(val types: List<Layout>): Type() {
-        init {
-            if(types.distinctBy { it.members }.size != 1) throw ProtoException("Type inside of & expression must have the same layout")
-        }
+    data class And(val types: List<Type>): Type() {
         override fun serializer(): KSerializer<Any> = types.first().serializer()
     }
 

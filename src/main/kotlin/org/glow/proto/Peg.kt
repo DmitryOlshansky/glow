@@ -54,7 +54,20 @@ abstract class Peg<T> : Function<State, Pair<State, Parsed<T>>> {
             }
         }
     }
+
+    fun rename(name: String): Peg<T> = object : Peg<T>() {
+        override fun apply(t: State): Pair<State, Parsed<T>> {
+            val (next, value) = this@Peg.apply(t)
+            return when (value) {
+                is Got -> next to value
+                is Error -> next to Error(name, next.ofs)
+            }
+        }
+    }
+
+    fun<U> skipping(peg: Peg<U>) = peg.flatMap(this).map { it.second }
 }
+
 
 
 fun match(text: String): Peg<String> = object : Peg<String>() {
@@ -72,7 +85,6 @@ fun sliceMatching(name: String, min: Int, cond: (Char) -> Boolean): Peg<CharSequ
         val r = t.input.subSequence(t.ofs, j)
         return if (r.length < min) t to Error(name, t.ofs)
         else t.copy(ofs = j) to Got(r)
-
     }
 }
 
@@ -99,11 +111,14 @@ fun<T> repeat(name: String, peg: Peg<T>, min: Int = 0, max: Int = 1_000_000_000)
                 }
                 is Got -> items.add(r.value)
             }
+            if (current.ofs == next.ofs) break // zero-width match
             current = next
         }
         return current to Got(items)
     }
 }
+
+fun<T> optional(name: String, peg: Peg<T>) = repeat(name, peg, 0, 1).map { it.firstOrNull() }
 
 fun<A, B, R> seq(first: Peg<A>, second: Peg<B>, cons: (A, B) -> R): Peg<R> =
     first.flatMap(second).map { (head, tail) ->

@@ -60,7 +60,7 @@ type Packet = struct {
     src: Addr
     dest: Addr
     nonce: Nonce
-    type: int                           // message, request, response, error, cancel
+    type: int                           // 0:message, 1:request, 2:response, 3:error, 4:cancellation request
     offset: int                         // offset for this fragment
     size: vu                            // total size of the full packet, to allow early reject by destination node
     payload: Array[byte]
@@ -183,13 +183,15 @@ proto Publisher {
     def unsubscribe(id: Id): void
 }
 
-// In order sequence of messages, think TCP or (more properly so)  - SCTP
+// In order sequence of messages, think TCP or (more properly so) SCTP and QUIC
 proto Sequence : Publisher {
-    // seqNum == 0 -> new stream of data, start of a session sess
+    // seqNum == 0 -> new stream of data, start of a new sequential stream
     // seqNo wraps around after 2^48 - 1 but to one, not to zero(!)
     // seqNo 2^^48 is written as 1 and sequential process is continued as 2, 3, ...
-    def write(sess: int, seqNo: int, data: Array[u8]): void
-    def end(sess: Array[byte], abrupt: int) // if abrupt != 0 -> terminate forcibly (e.g. cancel transaction)
+    def write(stream: int, seqNo: int, data: Array[u8]): void
+
+    // if abrupt != 0 -> terminate forcibly (e.g. cancel transaction)
+    def end(stream: Array[byte], abrupt: int)
 }
 
 // Out of order flow of messages, think UDP and media streaming protocols

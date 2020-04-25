@@ -57,11 +57,11 @@ class ProtoCompiler(val ts: TypeSystem) {
         Type.Struct(members) as Type
     }
 
-    val builtinType = any("built-in type", lit("int"), lit("bool"), lit("byte")).map {
+    val builtinType = any("built-in type", lit("void"), lit("int"), lit("bool"), lit("byte")).map {
         when(it) {
             "void" -> Type.Unit
             "int" -> Type.VarInt
-            "byte" -> Type.Byte
+            "bool", "byte" -> Type.Byte
             else -> throw ProtoException("Internal error in proto parser")
         }
     }
@@ -120,7 +120,7 @@ class ProtoCompiler(val ts: TypeSystem) {
         name to (Type.Protocol(name, extended, methods) as Type)
     }.skipping(ignorable)
     val decl = any("declaration", typeDef, protoDef)
-    val module = repeat("module", decl, 0).skipping(ignorable).flatMap(EOF).map { (decls, _) ->
-        Module(decls.toMap())
+    val module = repeat("module", decl, 0).flatMap(ignorable).flatMap(EOF).rename("module").map { (decls, _) ->
+        Module(decls.first.toMap())
     }
 }

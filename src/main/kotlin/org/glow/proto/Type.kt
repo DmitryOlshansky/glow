@@ -112,6 +112,8 @@ sealed class Type {
         override fun toString(): String = "byte"
 
         override fun equals(other: Any?): Boolean = other is Byte
+
+        override fun hashCode(): Int = 3
     }
 
     object VarInt : Type() {
@@ -131,10 +133,13 @@ sealed class Type {
         }
 
         override fun equals(other: Any?): Boolean = other is VarInt
+
+        override fun hashCode(): Int  = 2
     }
 
     object Unit : Literal<kotlin.Unit>(kotlin.Unit) {
         override fun equals(other: Any?): Boolean = other is Unit
+        override fun hashCode(): Int  = 1
         override fun toString(): String = "void"
     }
 
@@ -248,6 +253,11 @@ sealed class Type {
         override fun resolve(): Type = system.resolve(name)
         override fun serializer(): KSerializer<Any> = throw unresolvedAliasError
         override fun toString(): String = name
+        override fun equals(other: Any?): Boolean = when(other) {
+            is Alias -> name == other.name && system === other.system
+            else -> false
+        }
+        override fun hashCode(): Int = name.hashCode() + 31 * system.hashCode()
     }
 
     data class Generic(val name: String, val args: List<Type>) : Type() {

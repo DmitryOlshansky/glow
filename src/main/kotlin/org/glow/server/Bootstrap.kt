@@ -1,4 +1,4 @@
-package org.glow.org.glow
+package org.glow.server
 
 fun main(args: Array<String>) {
 

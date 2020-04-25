@@ -15,7 +15,7 @@ import kotlinx.serialization.builtins.AbstractEncoder
 import kotlinx.serialization.modules.*
 import java.lang.Exception
 
-// Firefly - Glow binary serialization format
+// Firefly - Glow protocol binary serialization format
 @OptIn(InternalSerializationApi::class)
 class Firefly(override val context: SerialModule = EmptyModule) : BinaryFormat {
 

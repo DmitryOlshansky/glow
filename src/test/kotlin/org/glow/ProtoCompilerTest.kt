@@ -6,6 +6,7 @@ import org.glow.proto.Got
 import org.glow.proto.ProtoCompiler
 import org.glow.proto.Type
 import org.junit.Test
+import java.lang.Exception
 import kotlin.test.assertEquals
 
 class ProtoCompilerTest {
@@ -18,39 +19,64 @@ class ProtoCompilerTest {
         assertEquals(Got("_"), c.id.parse("_."))
         assertEquals(Error("id", 0), c.id.parse("1."))
         assertEquals(Got(1), c.number.parse("1."))
-        /*
-            assertEquals(c.number.parse("20"), 20)
-            assertEquals(c.generic_type_arg.parse("20"), 20)
-            t.is_type(c.generic_type_arg.parse("u8"), "u8")
-            t.is_type(c.builtin_type.parse("u8"), "u8")
-            t.is_type(c.generic_type.parse("array[u8, 20]"), "instance")
-            val struct = c.type_def.parse("type A = struct {a:C b:u8}")
-            t.is_type(struct, "struct")
-            t.is(struct.fields[0][0], "a")
-            t.is(struct.fields[1][0], "b")
-            t.is_type(struct.fields[0][1], "alias")
-            t.is_type(struct.fields[1][1], "u8")
-            val proto = c.proto_def.parse("proto P : E, F { def fn(b: B, c: C):D }")
-            t.is_type(proto, "protocol")
-         */
+        assertEquals(Got(20), c.number.parse("20"))
+        assertEquals(Got(Type.Literal(20)), c.genericTypeArg.parse("20"))
+        assertEquals(Got(Type.Byte), c.genericTypeArg.parse("byte"))
+        assertEquals(Got(Type.VarInt), c.builtinType.parse("int"))
+        assertEquals(Got(Type.Generic("Array", listOf(Type.Byte, Type.Literal(20)))), c.genericType.parse("Array[byte, 20]"))
+        val struct = Type.Struct("a" to Type.Alias("C", ts), "b" to Type.Byte)
+        assertEquals(Got("A" to struct), c.typeDef.parse("type A = struct { a:C b:byte }"))
+        val proto = Type.Protocol(
+                "P",
+                listOf(Type.Alias("E", ts), Type.Alias("F", ts)),
+                listOf(
+                        Type.Method(
+                                Type.MethodKind.CALL, "fn",
+                                listOf("b" to Type.Alias("B", ts), "c" to Type.Alias("C", ts)),
+                                Type.Alias("D", ts)
+                        ),
+                        Type.Method(
+                                Type.MethodKind.MESSAGE, "message123",
+                                emptyList(),
+                                Type.Unit
+                        )
+                )
+        )
+        assertEquals(Got("P" to proto), c.protoDef.parse("proto P : E, F { def fn(b: B, c: C):D \n msg message123() }"))
     }
 
     @Test
     fun comments() {
         val ts = FireflyTypeSystem()
         val c = ProtoCompiler(ts)
-        val proto = "//abcdef \n identifier"
-        val id = c.type.parse(proto)
+        val id = c.type.parse("//abcdef \n identifier")
         assertEquals(Got(Type.Alias("identifier", ts)), id)
+        val type = c.type.parse("// comment\nstruct {// and here\n a: //here\n A next: int // there \n}")
+        assertEquals(Got(Type.Struct("a" to Type.Alias("A", ts), "next" to Type.VarInt)), type)
+
+        val proto = c.protoDef.parse("""
+            proto Publisher { 
+            /********************************
+                Multi-line comment
+            *********************************/
+                def subscribe(id: Id): void
+                def unsubscribe(id: Id): void
+            }
+        """)
+        assertEquals(Got("Publisher" to Type.Protocol("Publisher", emptyList(),
+            listOf(
+               Type.Method(Type.MethodKind.CALL, "subscribe", listOf("id" to Type.Alias("Id", ts)), Type.Unit),
+               Type.Method(Type.MethodKind.CALL, "unsubscribe", listOf("id" to Type.Alias("Id", ts)), Type.Unit)
+            )
+        )), proto)
     }
 
     @Test
     fun parseCoreProtos() {
-        /* TODO: complete translation from JS
+        val core = this::class.java.getResourceAsStream("/core.firefly")?.readAllBytes()?.contentToString() ?: throw Exception("Failed to load core.firefly")
         val c = ProtoCompiler(FireflyTypeSystem())
-        val content = fs.readFileSync("protocol.glow").toString()
-        val r = c.proto_module.parse(content)
-        t.not(r, undefined)
-         */
+        val mod = c.module.parse(core)
+        println(mod)
+        assert(mod is Got)
     }
 }

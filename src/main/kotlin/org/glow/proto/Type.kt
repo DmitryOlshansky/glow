@@ -3,8 +3,14 @@ package org.glow.proto
 import kotlinx.serialization.*
 
 sealed class Type {
+    // perform resolution of aliases recursively for any type constructors
+    open fun resolve(): Type = this
+
+    // opaque serializer, deduced from the constituent types after resolution
+    abstract fun serializer(): KSerializer<Any>
+
     // the machinery for any structural type
-    abstract class Layout(val name: String, val members: Sequence<Pair<String, Type>>): Type() {
+    abstract class Layout(val name: String, val members: List<Pair<String, Type>>): Type() {
 
         override fun resolve(): Type = members.forEach { it.second.resolve() }.let { this }
 
@@ -102,20 +108,10 @@ sealed class Type {
                         else -> throw typeError
                     }
         }
-    }
 
-    object Boolean: Type() {
-        override fun serializer(): KSerializer<Any>  =  object : KSerializer<Any> {
-            override val descriptor: SerialDescriptor get() = SerialDescriptor("bool")
+        override fun toString(): String = "byte"
 
-            override fun deserialize(decoder: Decoder): Any = decoder.decodeBoolean()
-
-            override fun serialize(encoder: Encoder, value: Any) =
-                    when(value){
-                        is kotlin.Boolean -> encoder.encodeBoolean(value)
-                        else -> throw typeError
-                    }
-        }
+        override fun equals(other: Any?): Boolean = other is Byte
     }
 
     object VarInt : Type() {
@@ -126,36 +122,86 @@ sealed class Type {
 
             override fun serialize(encoder: Encoder, value: Any) =
                     when(value){
-                        is kotlin.Long -> encoder.encodeLong(value)
-                        is kotlin.Int -> encoder.encodeInt(value)
-                        is kotlin.Short -> encoder.encodeShort(value)
+                        is Long -> encoder.encodeLong(value)
+                        is Int -> encoder.encodeInt(value)
+                        is Short -> encoder.encodeShort(value)
                         is kotlin.Byte -> encoder.encodeShort(value.toShort()) // to keep encoding as varint(!)
                         else -> throw typeError
                     }
         }
+
+        override fun equals(other: Any?): Boolean = other is VarInt
     }
 
-    object Unit : Literal<kotlin.Unit>(kotlin.Unit)
+    object Unit : Literal<kotlin.Unit>(kotlin.Unit) {
+        override fun equals(other: Any?): Boolean = other is Unit
+        override fun toString(): String = "void"
+    }
 
-    // basic type constructors for everyday use
+    // ======= Basic type constructors =======
+
     open class Literal<T>(val value: T):
-            Layout("literal", emptySequence())
+            Layout("literal", emptyList()) {
+        override fun equals(other: Any?): Boolean = when(other) {
+            is Literal<*> -> value == value
+            else -> false
+        }
 
-    class Array(t: Type, size: Literal<Int>):
-            Layout("Array", (0 until size.value).map { it.toString() }.asSequence().zip(generateSequence { t }.take(size.value)))
+        override fun hashCode(): Int = super.hashCode() * 31
+    }
 
-    class Optional(t: Type):
-            Layout("optional", sequenceOf("present" to Boolean, "value" to t))
+    class Array(val base: Type, val size: Literal<Int>):
+            Layout("Array", (0 until size.value).map { it.toString() to base }) {
+        override fun equals(other: Any?): Boolean = when(other) {
+            is Array -> members == other.members
+            else -> false
+        }
 
-    class Struct(name: String, fields: List<Pair<String, Type>>):
-            Layout(name, fields.asSequence())
+        override fun toString(): String = "$name[$base, $size]"
+
+        override fun hashCode(): Int = super.hashCode() * 31
+    }
+
+    class Optional(val type: Type):
+            Layout("optional", listOf("present" to Byte, "value" to type)) {
+        override fun equals(other: Any?): Boolean = when(other) {
+            is Optional -> members == other.members
+            else -> false
+        }
+
+        override fun toString(): String = "$name[$type]"
+
+        override fun hashCode(): Int = super.hashCode() * 31
+    }
+
+    class Struct(fields: List<Pair<String, Type>>):
+            Layout("struct", fields) {
+        constructor(vararg args: Pair<String, Type>): this(args.toList())
+
+        override fun equals(other: Any?): Boolean = when(other) {
+            is Struct -> members == other.members
+            else -> false
+        }
+
+        override fun hashCode(): Int = super.hashCode() * 31
+
+        override fun toString(): String {
+            val fields = members.joinToString("\n") { "${it.first}: ${it.second}" }
+            return "$name{ $fields }"
+        }
+    }
 
     enum class MethodKind {
-        MESSAGE, CALL
+        MESSAGE, CALL;
+
+        override fun toString(): String = when(this) {
+            MESSAGE -> "msg"
+            CALL -> "def"
+        }
     }
 
     class Method(val kind: MethodKind, name: String, val args: List<Pair<String, Type>>, val ret: Type):
-            Layout(name, (listOf("method id" to VarInt) + args).asSequence()) {
+            Layout(name, listOf("method id" to VarInt) + args) {
         override fun equals(other: Any?) = when(other) {
             is Method ->  name == other.name && kind == other.kind && args == other.args && ret == other.ret
             else -> false
@@ -166,24 +212,42 @@ sealed class Type {
             result = 31 * result + name.hashCode()
             return result
         }
+
+        override fun toString(): String {
+            val argsString = args.joinToString { "${it.first}: ${it.second}" }
+            return "${kind} $name($argsString): $ret"
+        }
     }
 
     // extends list should be protocols, but there is no way to know until types are resolved and semantic is done
     class Protocol(name: String, val extends: List<Type>, val methods: List<Method>):
-            Layout(name, sequenceOf("id" to DynamicArray(Byte))) {
-
+            Layout(name, listOf("id" to DynamicArray(Byte))) {
         override fun equals(other: Any?) = when(other) {
             is Protocol -> name == other.name && extends == other.extends && methods == other.methods
             else -> false
         }
 
         override fun hashCode(): Int = 127 * name.hashCode() + 31 * extends.hashCode() + methods.hashCode()
+
+        override fun toString(): String {
+            val body = methods.joinToString("\n") { "  $it" }
+            val base = extends.joinToString {
+                when (it) {
+                    is Alias -> it.name
+                    is Protocol -> it.name
+                    else -> it.toString()
+                }
+            }
+            val extendsSection = if (base.isEmpty()) "" else ": $base"
+            return "proto $name${extendsSection} {\n$body\n}"
+        }
     }
 
     // Alias - a temporary type created on demand before full semantic analysis is done
     data class Alias(val name: String, val system: TypeSystem) : Type() {
         override fun resolve(): Type = system.resolve(name)
         override fun serializer(): KSerializer<Any> = throw unresolvedAliasError
+        override fun toString(): String = name
     }
 
     data class Generic(val name: String, val args: List<Type>) : Type() {
@@ -194,12 +258,6 @@ sealed class Type {
     data class And(val types: List<Type>): Type() {
         override fun serializer(): KSerializer<Any> = types.first().serializer()
     }
-
-    // perform resolution of aliases recursively for any type constructors
-    open fun resolve(): Type = this
-
-    // opaque serializer, deduced from the constituent types after resolution
-    abstract fun serializer(): KSerializer<Any>
 
     companion object {
         private val outOfRange = ProtoException("Dynamic serialization error - out of range")

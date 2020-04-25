@@ -6,11 +6,23 @@ class ProtoCompiler(val ts: TypeSystem) {
     val ws = sliceMatching("whitespace", 0) { c ->
         c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\u000b' || c == '\u0085' || c == '\u2028'
     }
-    val comment = match("//").flatMap(sliceMatching("text", 0) {
+    val lineComment = match("//").flatMap(sliceMatching("text", 0) {
         it != '\n' && it != '\r'
-    }).map { it.second }.rename("comment")
+    }).map { it.second }.rename("line-comment")
 
-    val ignorable = repeat("comment|whitespace", any("comment|whitespace", comment, ws))
+    val comment = seq(
+        match("/*"),
+        repeat("comment-body", sliceMatching("non-star", 0){ it != '*' }.flatMap(
+            sliceMatching("non-slash", 1) { it == '*' }
+        ), 0).map { parts ->
+            parts.joinToString("") { it.first } as CharSequence
+        },
+        match("/")
+    ) { _, body, _ ->
+        body
+    }
+
+    val ignorable = repeat("comment|line-comment|whitespace", any("comment|whitespace", comment, lineComment, ws))
 
     // building blocks
 
@@ -42,13 +54,13 @@ class ProtoCompiler(val ts: TypeSystem) {
     }
 
     val structDef = seq(lit("struct"), lit("{"), repeat("struct members", structMember, 0), lit("}")) { _, _, members, _ ->
-        Type.Struct("struct", members) as Type
+        Type.Struct(members) as Type
     }
 
-    val builtinType = any("built-in type", lit("varint"), lit("bool"), lit("byte")).map {
+    val builtinType = any("built-in type", lit("int"), lit("bool"), lit("byte")).map {
         when(it) {
-            "varint" -> Type.VarInt
-            "bool" -> Type.Boolean
+            "void" -> Type.Unit
+            "int" -> Type.VarInt
             "byte" -> Type.Byte
             else -> throw ProtoException("Internal error in proto parser")
         }
@@ -61,7 +73,7 @@ class ProtoCompiler(val ts: TypeSystem) {
     })
 
     // generic type, pair of string -> type args
-    val genericType = seq(id, lit("["), repeat("generic type arguments", genericTypeArg), lit("]")) { typeId, _, args, _ ->
+    val genericType = seq(id, lit("["), delimited(",", genericTypeArg), lit("]")) { typeId, _, args, _ ->
         Type.Generic(typeId, args) as Type
     }
 
@@ -79,18 +91,23 @@ class ProtoCompiler(val ts: TypeSystem) {
     // this is type definition
     val typeDef = seq(lit("type"), id, lit("="), type) { _, typeId, _, expr ->
         typeId to expr
-    }
+    }.skipping(ignorable)
 
     val aliases = delimited(",", alias)
     val arg = seq(id, lit(":"), type) { argId, _, expr ->
         argId to expr
     }
-    val args = seq(lit("("), delimited(",", arg), lit(")")) { _, args, _ ->
-        args
+    val args = seq(lit("("), optional("args", delimited(",", arg)), lit(")")) { _, args, _ ->
+        args ?: emptyList()
     }
     val returnType = optional("return type", seq(lit(":"), type) { _, e -> e })
-    val method = seq(any("call|message", lit("def"), lit("message")), id, args,  returnType) { kind, name, args, ret ->
-        Type.Method(Type.MethodKind.valueOf(kind), name, args, ret ?: Type.Unit)
+    val method = seq(any("def|msg", lit("def"), lit("msg")), id, args,  returnType) { kind, name, args, ret ->
+        val methodKind = when(kind) {
+            "msg" -> Type.MethodKind.MESSAGE
+            "def" -> Type.MethodKind.CALL
+            else -> throw ProtoException("Internal error: unknown method type")
+        }
+        Type.Method(methodKind, name, args, ret ?: Type.Unit)
     }
 
     val methods = repeat("methods", method, 0)
@@ -101,9 +118,9 @@ class ProtoCompiler(val ts: TypeSystem) {
     val protoBody =  seq(lit("{"), methods, lit("}")) { _, body, _ -> body }
     val protoDef = seq(lit("proto"), id, extendsProtos, protoBody) { _, name, extended, methods ->
         name to (Type.Protocol(name, extended, methods) as Type)
-    }
+    }.skipping(ignorable)
     val decl = any("declaration", typeDef, protoDef)
-    val module = repeat("module", decl, 0).flatMap(EOF).map { (decls, _) ->
+    val module = repeat("module", decl, 0).skipping(ignorable).flatMap(EOF).map { (decls, _) ->
         Module(decls.toMap())
     }
 }

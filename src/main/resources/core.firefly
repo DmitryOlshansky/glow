@@ -49,12 +49,6 @@ type Relation = struct {
     slave: Id                           // slave is a resource used or owner by master
 }
 
-// Resource Id with Id of its type (=proto) as tuple
-type Resource = struct {
-    type: Id                            // Id of resource type, points to existing Protocol resource
-    id: Id                              // Id of the resource itself
-}
-
 // Firefly Network packet
 type Packet = struct {
     src: Addr
@@ -62,7 +56,7 @@ type Packet = struct {
     nonce: Nonce
     type: int                           // 0:message, 1:request, 2:response, 3:error, 4:cancellation request
     offset: int                         // offset for this fragment
-    size: vu                            // total size of the full packet, to allow early reject by destination node
+    size: int                           // total size of the full packet, to allow early reject by destination node
     payload: Array[byte]
     mac: MAC
 }

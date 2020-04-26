@@ -1,4 +1,4 @@
-package org.glow.proto
+package dev.glow.firefly
 
 import java.util.function.Function
 
@@ -37,8 +37,8 @@ abstract class Peg<T> : Function<State, Pair<State, Parsed<T>>> {
         }
     }
 
-    fun<U> flatMap(p: Peg<U>): Peg<Pair<T,U>> = object : Peg<Pair<T, U>>() {
-        override fun apply(t: State): Pair<State, Parsed<Pair<T,U>>> {
+    fun<U> flatMap(p: Peg<U>): Peg<Pair<T, U>> = object : Peg<Pair<T, U>>() {
+        override fun apply(t: State): Pair<State, Parsed<Pair<T, U>>> {
             val (next, result) = this@Peg.apply(t)
             return when (result) {
                 is Error -> next to result

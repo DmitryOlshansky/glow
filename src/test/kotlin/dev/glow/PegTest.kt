@@ -1,12 +1,13 @@
-package org.glow
+package dev.glow
 
-import org.glow.proto.*
+import dev.glow.firefly.*
+import org.glow.firefly.*
 import org.junit.Test
 import kotlin.test.assertEquals
 
 class PegTest {
     private fun String.pieces() = this.split("").subList(1, this.length+1)
-    private fun String.gotList() = Got(this.split("").subList(1, this.length+1))
+    private fun String.gotList() = Got(this.split("").subList(1, this.length + 1))
 
     @Test
     fun basics() {

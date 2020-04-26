@@ -1,4 +1,4 @@
-package org.glow.proto
+package dev.glow.firefly
 
 interface TypeSystem  {
     // idempotent and must return existing type that was registered with that name

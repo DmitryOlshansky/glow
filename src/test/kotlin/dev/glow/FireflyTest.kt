@@ -1,10 +1,10 @@
-package org.glow
+package dev.glow
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.dumps
 import kotlinx.serialization.loads
-import org.glow.serialization.Firefly
+import dev.glow.firefly.serialization.Firefly
 import org.junit.Test
 import kotlin.test.assertEquals
 

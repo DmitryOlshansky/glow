@@ -1,4 +1,4 @@
-package org.glow.proto
+package dev.glow.firefly
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap

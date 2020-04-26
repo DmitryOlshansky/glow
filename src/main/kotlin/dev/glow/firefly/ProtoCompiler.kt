@@ -1,4 +1,4 @@
-package org.glow.proto
+package dev.glow.firefly
 
 data class Module(val decls: Map<String, Type>)
 
@@ -11,13 +11,13 @@ class ProtoCompiler(val ts: TypeSystem) {
     }).map { it.second }.rename("line-comment")
 
     val comment = seq(
-        match("/*"),
-        repeat("comment-body", sliceMatching("non-star", 0){ it != '*' }.flatMap(
-            sliceMatching("non-slash", 1) { it == '*' }
-        ), 0).map { parts ->
-            parts.joinToString("") { it.first } as CharSequence
-        },
-        match("/")
+            match("/*"),
+            repeat("comment-body", sliceMatching("non-star", 0) { it != '*' }.flatMap(
+                    sliceMatching("non-slash", 1) { it == '*' }
+            ), 0).map { parts ->
+                parts.joinToString("") { it.first } as CharSequence
+            },
+            match("/")
     ) { _, body, _ ->
         body
     }
@@ -29,14 +29,14 @@ class ProtoCompiler(val ts: TypeSystem) {
     fun lit(text: String) = match(text).skipping(ignorable)
 
     fun<T> delimited(separator: String, peg: Peg<T>) = peg.flatMap(
-            repeat("tail", seq(lit(separator), peg) { _, v -> v}, 0)
+            repeat("tail", seq(lit(separator), peg) { _, v -> v }, 0)
     ).map { (head, tail) ->
         listOf(head) + tail
     }
 
-    val id = sliceMatching("id", 1){
+    val id = sliceMatching("id", 1) {
         it.isJavaIdentifierStart()
-    }.flatMap(sliceMatching("id_cont", 0){
+    }.flatMap(sliceMatching("id_cont", 0) {
         it.isJavaIdentifierPart()
     }).map {
         it.first.toString() + it.second.toString()
@@ -101,13 +101,14 @@ class ProtoCompiler(val ts: TypeSystem) {
         args ?: emptyList()
     }
     val returnType = optional("return type", seq(lit(":"), type) { _, e -> e })
-    val method = seq(any("def|msg", lit("def"), lit("msg")), id, args,  returnType) { kind, name, args, ret ->
-        val methodKind = when(kind) {
+    val method = seq(any("def|msg", lit("def"), lit("msg")), id, args, returnType) { kind, name, args, ret ->
+        val methodKind = when (kind) {
             "msg" -> Type.MethodKind.MESSAGE
             "def" -> Type.MethodKind.CALL
             else -> throw ProtoException("Internal error: unknown method type")
         }
-        Type.Method(methodKind, name, args, ret ?: Type.Unit)
+        Type.Method(methodKind, name, args, ret
+                ?: Type.Unit)
     }
 
     val methods = repeat("methods", method, 0)
@@ -115,7 +116,7 @@ class ProtoCompiler(val ts: TypeSystem) {
     val extendsProtos = optional("extended protos", seq(lit(":"), aliases) { _, v -> v }).map {
         it ?: emptyList()
     }
-    val protoBody =  seq(lit("{"), methods, lit("}")) { _, body, _ -> body }
+    val protoBody = seq(lit("{"), methods, lit("}")) { _, body, _ -> body }
     val protoDef = seq(lit("proto"), id, extendsProtos, protoBody) { _, name, extended, methods ->
         name to (Type.Protocol(name, extended, methods) as Type)
     }.skipping(ignorable)

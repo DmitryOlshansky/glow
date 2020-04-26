@@ -281,9 +281,13 @@ interface Node : Resource {
 
 // A runnable task bound, has implicit use relation to all of the resources of the owner (parent) resource
 // Sand-boxing is as simple as creating a Task using the private key and Id(entity) of some constrained owner resource
-//
-interface Task {
-    fun configure()
+// kv is a set of configuration parameters encoded in an application-specific way
+// but usually some suitable text format such as JSON value
+interface Task : Resource {
+    fun run(fly: FireflyContext): CompletableFuture<Unit>
+    fun stop(fly: FireflyContext): CompletableFuture<Unit>
+    fun program(fly: FireflyContext, image: Bytes): CompletableFuture<Unit>
+    fun configure(fly: FireflyContext, kv: Map<String, Bytes>): CompletableFuture<Unit>
 }
 
 // Link has a unique contract
@@ -291,20 +295,20 @@ interface Task {
 // either via shared memory with the node process or in an platform-specific embedding mode
 // Normally each process has exactly one send and one recv packet queue and it's packets are
 // processed by the node (signatures etc.)
-interface Link {
+interface Link : Resource {
     // a packet that will hit the routing framework of the link's parent node (msg is sent by link's task)
     @Message
-    fun outbound(packet: Packet)
+    fun outbound(fly: FireflyContext, packet: Packet)
     // packet that is to be sent though this link (msg sent by this node)
     @Message
-    fun inbound(packet: Packet)
+    fun inbound(fly: FireflyContext,packet: Packet)
     // configure link parameters
-    fun configure(up: Long, mtu: Long, clazz: LinkClass)
+    fun configure(fly: FireflyContext, up: Long, mtu: Long, clazz: LinkClass)
 }
 
 // Foreign network interface
 
-interface FNI {
+interface FNI : Resource {
     // protocol argument is one of URI strings for the scheme part
     // For Flows:
     //  udp
@@ -325,7 +329,7 @@ interface FNI {
 }
 
 // FNI socket, in reality it's a connection pool for sequential sockets
-interface Socket {
+interface Socket : Resource {
     // binds to a specific f(oreign) n(etwork) a(ddress)
     fun bind(fna: String)
 
@@ -343,7 +347,7 @@ interface Socket {
 
 // A base proto for resources which can be (un)subscribed to
 // in order to receive msg's from them
-interface Publisher {
+interface Publisher : Resource {
     fun subscribe(id: Id)
     fun unsubscribe(id: Id)
 }
@@ -369,4 +373,3 @@ interface Flow : Publisher {
 interface FlowSocket : Socket, Flow
 
 interface SequenceSocket : Socket, Sequence
-

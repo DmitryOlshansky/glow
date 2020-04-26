@@ -1,11 +1,11 @@
-package dev.glow.api.impl
+package dev.glow.api.remote
 
 import dev.glow.api.*
+import dev.glow.api.local.Resource
 import dev.glow.firefly.network.FireflyContext
 import dev.glow.firefly.serialization.Firefly
 import kotlinx.serialization.builtins.list
 import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.internal.AbstractCollectionSerializer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 

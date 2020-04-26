@@ -1,4 +1,4 @@
-package dev.glow.api.impl
+package dev.glow.api.local
 
 import dev.glow.api.Addr
 import dev.glow.api.Id

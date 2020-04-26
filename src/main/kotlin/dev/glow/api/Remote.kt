@@ -1,4 +1,4 @@
-package dev.glow.api.impl
+package dev.glow.api
 
 import dev.glow.firefly.network.FireflyContext
 

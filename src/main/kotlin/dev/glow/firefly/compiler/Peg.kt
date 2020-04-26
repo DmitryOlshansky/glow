@@ -1,4 +1,4 @@
-package dev.glow.firefly
+package dev.glow.firefly.compiler
 
 import java.util.function.Function
 

@@ -1,4 +1,4 @@
-package dev.glow.firefly
+package dev.glow.firefly.compiler
 
 data class Module(val decls: Map<String, Type>)
 

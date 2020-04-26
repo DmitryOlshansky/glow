@@ -1,4 +1,4 @@
-package dev.glow.firefly
+package dev.glow.firefly.compiler
 
 import kotlinx.serialization.*
 

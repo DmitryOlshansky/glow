@@ -90,6 +90,7 @@ data class Addr(val value: ByteArray) {
 
     override fun hashCode(): Int = value.contentHashCode()
 }
+
 // public key in key exchange phase
 data class PubKey(@Size(32) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
@@ -145,9 +146,9 @@ data class Nonce(@Size(24) val value: ByteArray) {
 }
 
 data class KeyExchange(
-        val id: PubKey,
-        val pk: PubKey,
-        val signature: Signature               // signed by network secret key i.e. a system or federation key
+        val id: Id,                         // the id of the node that wants to establish link
+        val pk: PubKey,                     // public key used for key exchange
+        val signature: Signature            // signed by network secret key i.e. a system or federation key
 )
 
 data class LinkClass(
@@ -194,11 +195,20 @@ data class Packet(
 // All resources implement this proto, with funault implementations for all of methods
 // usually provided by the Glow run-time
 interface Resource {
-    // Human readable form of the resource contents
-    fun describe(): String
+    // the id of the resource
+    val id: Id
+    // human readable label of this resource
+    fun label(fly: FireflyContext): String
+
+    // change label of this resource
+    fun relabel(fly: FireflyContext, label: String)
+    
+    // human readable form of the resource contents
+    fun describe(fly: FireflyContext): String
+
     // transfer ownership to a new owner, must have `access` to `newOwner` Id (ownership is not required)
     // any resource has `access` to its owner and any resource in the transitive closure of owned resources
-    fun transfer(newOwner: Id)
+    fun transfer(fly: FireflyContext, newOwner: Id)
 }
 
 // Meta self-description of a protocol with proto interface
@@ -222,7 +232,7 @@ data class Method(
 // every time there is a need for signature in the proto method,
 // that nonce of the message is prepended during computation
 // signature = Sign(nonce || flatten(args - signature))
-interface Node {
+interface Node : Resource {
     // These messages should be sent by both parties simultaneously
     @Message
     fun start(fly: FireflyContext, kx: KeyExchange)

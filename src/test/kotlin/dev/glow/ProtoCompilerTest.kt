@@ -1,10 +1,10 @@
 package dev.glow
 
-import dev.glow.firefly.Error
-import dev.glow.firefly.FireflyTypeSystem
-import dev.glow.firefly.Got
-import dev.glow.firefly.ProtoCompiler
-import dev.glow.firefly.Type
+import dev.glow.firefly.compiler.Error
+import dev.glow.firefly.compiler.FireflyTypeSystem
+import dev.glow.firefly.compiler.Got
+import dev.glow.firefly.compiler.ProtoCompiler
+import dev.glow.firefly.compiler.Type
 import org.junit.Test
 import java.lang.Exception
 import kotlin.test.assertEquals

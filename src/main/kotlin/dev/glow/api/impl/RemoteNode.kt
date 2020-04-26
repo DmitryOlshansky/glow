@@ -3,7 +3,7 @@ package dev.glow.api.impl
 import dev.glow.api.*
 import dev.glow.firefly.network.FireflyContext
 
-class RemoteNode(val id: Id) : Node {
+class RemoteNode(id: Id) : Resource(id), Node {
     override fun start(fly: FireflyContext, kx: KeyExchange) {
         TODO("Not yet implemented")
     }

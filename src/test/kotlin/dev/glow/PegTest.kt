@@ -1,6 +1,6 @@
 package dev.glow
 
-import dev.glow.firefly.*
+import dev.glow.firefly.compiler.*
 import org.junit.Test
 import kotlin.test.assertEquals
 

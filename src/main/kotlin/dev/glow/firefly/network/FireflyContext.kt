@@ -1,28 +1,21 @@
 package dev.glow.firefly.network
 
 import dev.glow.firefly.api.*
+import dev.glow.firefly.api.FireflyContext
+import dev.glow.firefly.api.FireflyNetwork
 
-interface FireflyContext {
-    // the nonce of the received (handled) message
-    val nonce: Nonce
+data class FireflyContext(override val self: Addr,
+                          override val from: Addr,
+                          override val nonce: Nonce,
+                          override val network: FireflyNetwork,
+                          override val link: Link) : FireflyContext {
+    override fun nextNonce(): Nonce = network.nextNonceFor(self)
 
-    // the address of the source of the message
-    val source: Addr
+    override fun message(dest: Addr, type: PacketType, bytes: Bytes, nonce: Nonce?) {
+        network.routeMessage(self, dest, type, bytes, nonce ?: nextNonce())
+    }
 
-    // returns the nonce that the network would assign to the next message
-    // useful in case we wanted to use it ourselves
-    fun nextNonce(): Nonce
-
-    // shoot a network message directly (for the very rare occasion it's needed)
-    fun message(dest: Addr, bytes: Bytes, nonce: Nonce? = null)
-
-    // reply to call directly by sending an error without throwing
-    // an exception (and catching it later in the upper layer)
-    fun error(code: ErrorCode)
-
-    // the network module that routed the message
-    val network: FireflyNetwork
-
-    // the link through which the message was delivered
-    val link: Link
+    override fun error(code: ErrorCode) {
+        network.routeError(self, from, code, nonce)
+    }
 }

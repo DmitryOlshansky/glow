@@ -1,6 +1,5 @@
 package dev.glow.firefly.api
 
-import dev.glow.firefly.network.FireflyContext
 import kotlinx.serialization.*
 import java.util.concurrent.CompletableFuture
 
@@ -21,6 +20,15 @@ enum class ErrorCode(val code: Int) {
     // (fatal) the message matches the protocol but fails to adhere to the higher-level contract
     // on the contents of the fields in the message or sequencing of the messages
     VIOLATION(6)
+}
+
+enum class PacketType(val type: Int) {
+    MSG(0),
+    REQUEST(1),
+    REPLY(2),
+    ERROR(3),
+    CANCEL(4),
+    BROADCAST(5)    // same as MSG, but broadcast to all of resources owned by destination resource instead
 }
 
 annotation class Size(val size: Int)
@@ -54,6 +62,11 @@ data class Id(@Size(32) val value: ByteArray) {
     }
 
     override fun hashCode(): Int = value.contentHashCode()
+
+    fun toAddr() = Addr(value)
+
+    fun matches(addr: Addr) =
+            addr.value.size <= value.size && addr.value.contentEquals(value.sliceArray(0..addr.value.size))
 }
 
 // secret key for Id
@@ -187,7 +200,7 @@ data class LSP(
         val state: Int,                          // 0 - down, 1 - up, other values might be added in the future
         val mtu: Int,                            // dynamic value for conservative estimate, means MTU is no less then this value
         val clazz: LinkClass,                    // originally class but names are not part of type in FireFly anyhow
-        val rev: Int
+        val rev: Int                             // monotonic revision counter
 )
 
 // Relation - a part of establishing Ownership or Uses relation
@@ -195,7 +208,8 @@ data class LSP(
 data class Relation(
         val kind: Int,                           // 0 - uses, 1 - owns
         val master: Id,                          // master is a resource who uses or owns slave
-        val slave: Id                            // slave is a resource used or owner by master
+        val slave: Id,                           // slave is a resource used or owner by master
+        val rev: Int                             // monotonic revision counter
 )
 
 // Firefly Network packet
@@ -272,7 +286,7 @@ interface Node : Resource {
     // must be sent by the owner of this `node` resource
     // owner of `node` may choose to  create on behalf of somebody and transfer the resource in the next step
     // (how such arrangements are done is outside of Firefly network charter)
-    fun create(fly: FireflyContext, label: String, type: Id, id: Id): CompletableFuture<Id>
+    fun create(fly: FireflyContext, type: Id, id: Id): CompletableFuture<Id>
 
     // same for reverse operation, must be sent by owner of `id` or by `id` itself
     fun destroy(fly: FireflyContext, id: Id): CompletableFuture<Unit>
@@ -301,7 +315,7 @@ interface Link : Resource {
     fun outbound(fly: FireflyContext, packet: Packet)
     // packet that is to be sent though this link (msg sent by this node)
     @Message
-    fun inbound(fly: FireflyContext,packet: Packet)
+    fun inbound(fly: FireflyContext, packet: Packet)
     // configure link parameters
     fun configure(fly: FireflyContext, up: Long, mtu: Long, clazz: LinkClass)
 }

@@ -1,6 +1,7 @@
 package dev.glow.firefly.network
 
 import dev.glow.firefly.api.*
+import dev.glow.firefly.api.FireflyContext
 import dev.glow.firefly.api.Remote
 import dev.glow.firefly.local.Resource
 import io.netty.channel.AbstractChannel
@@ -18,16 +19,18 @@ class NettyLink(id: Id, val channelProducer: () -> CompletableFuture<AbstractCha
     private val up = AtomicBoolean(false)
     private val link = AtomicReference<AbstractChannel>()
     private val inFlight = AtomicReference<CompletableFuture<Unit>>()
+    private val keys = AtomicReference<SessionKeys>() //TODO: use session keys for encryption
 
     override fun outbound(fly: FireflyContext, packet: Packet) {
         link.get()?.apply {
-            // TODO: check mtu
+            // TODO: encrypt the packet and send plain byte array
             this.write(packet)
         }
     }
 
     override fun inbound(fly: FireflyContext, packet: Packet) {
-        fly.message(packet.dest, packet.payload)
+        val type = PacketType.values().find { it.type == packet.type } ?: throw FireflyNetworkException(ErrorCode.INTERNAL)
+        fly.message(packet.dest, type, packet.payload)
     }
 
     override fun configure(fly: FireflyContext, up: Long, mtu: Long, clazz: LinkClass) {
@@ -57,6 +60,8 @@ class NettyLink(id: Id, val channelProducer: () -> CompletableFuture<AbstractCha
                                 is AbstractChannel -> {
                                     log.info("Established netty connection on link $id")
                                     link.set(value)
+                                    //TODO: add callback to handle reads on the channel via handleIncomingMessage
+                                    value.read()
                                     future.complete(Unit)
                                 }
                                 else -> {

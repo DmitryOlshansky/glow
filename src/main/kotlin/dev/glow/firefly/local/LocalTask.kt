@@ -1,7 +1,7 @@
 package dev.glow.firefly.local
 
 import dev.glow.firefly.api.*
-import dev.glow.firefly.network.FireflyContext
+import dev.glow.firefly.api.FireflyContext
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService

@@ -3,7 +3,7 @@ package dev.glow.firefly.local
 import dev.glow.firefly.api.Addr
 import dev.glow.firefly.api.Id
 import dev.glow.firefly.api.Resource
-import dev.glow.firefly.network.FireflyContext
+import dev.glow.firefly.api.FireflyContext
 import java.util.concurrent.atomic.AtomicReference
 
 abstract class Resource(override val id: Id, label: String = "") : Resource {
@@ -19,7 +19,7 @@ abstract class Resource(override val id: Id, label: String = "") : Resource {
     }
 
     override fun transfer(fly: FireflyContext, newOwner: Id) {
-        val requester = fly.network.lookup(this, fly.source)
+        val requester = fly.network.lookup(this, fly.from)
         val beneficiary = fly.network.lookup(requester, Addr(newOwner.value))
         fly.network.transfer(requester, beneficiary, this.id)
     }

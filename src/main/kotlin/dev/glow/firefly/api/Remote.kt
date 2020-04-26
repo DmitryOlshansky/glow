@@ -1,7 +1,5 @@
 package dev.glow.firefly.api
 
-import dev.glow.firefly.network.FireflyContext
-
 interface Remote {
     // a hook that is called when there is a message from this remote resource
     fun handleIncomingMessage(fly: FireflyContext, message: Any)

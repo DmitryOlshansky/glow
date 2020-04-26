@@ -2,7 +2,7 @@ package dev.glow.firefly.remote
 
 import dev.glow.firefly.api.*
 import dev.glow.firefly.local.Resource
-import dev.glow.firefly.network.FireflyContext
+import dev.glow.firefly.api.FireflyContext
 import dev.glow.firefly.serialization.Firefly
 import kotlinx.serialization.builtins.list
 import kotlinx.serialization.builtins.serializer
@@ -15,25 +15,24 @@ class RemoteNode(val firefly: Firefly, id: Id) : Resource(id), Node, Remote {
     
     override fun start(fly: FireflyContext, kx: KeyExchange) {
         val bytes = firefly.dump(KeyExchange.serializer(), kx)
-        fly.message(Addr(id.value), Bytes(bytes))
+        fly.message(Bytes(bytes))
     }
 
     override fun establish(fly: FireflyContext, kxNonce: Nonce, encryptedKey: AeadKey) {
         val bytes = firefly.dump(Nonce.serializer(), kxNonce) + firefly.dump(AeadKey.serializer(), encryptedKey)
-        fly.message(Addr(id.value), Bytes(bytes))
+        fly.message(Bytes(bytes))
     }
 
     override fun heartbeat(fly: FireflyContext, links: List<LSP>, resources: List<Relation>) {
         val bytes = firefly.dump(LSP.serializer().list, links) + firefly.dump(Relation.serializer().list, resources)
-        fly.message(Addr(id.value), Bytes(bytes))
+        fly.message(Bytes(bytes))
     }
 
-    override fun create(fly: FireflyContext, label: String, type: Id, id: Id): CompletableFuture<Id> {
+    override fun create(fly: FireflyContext, type: Id, id: Id): CompletableFuture<Id> {
         val future = CompletableFuture<Id>()
         outstanding.computeIfAbsent(fly.nonce) {
-            val bytes = firefly.dump(String.serializer(), label) + firefly.dump(Id.serializer(), type) +
-                    firefly.dump(Id.serializer(), id)
-            fly.message(Addr(id.value), Bytes(bytes))
+            val bytes = firefly.dump(Id.serializer(), type) + firefly.dump(Id.serializer(), id)
+            fly.message(Bytes(bytes))
             val proxy = CompletableFuture<Any>()
             proxy.handle {  value, ex ->
                 when(value) {
@@ -51,7 +50,6 @@ class RemoteNode(val firefly: Firefly, id: Id) : Resource(id), Node, Remote {
         // TODO: send the message and handle it
         return future
     }
-
 
     override fun handleIncomingMessage(fly: FireflyContext, message: Any) {
         outstanding[fly.nonce]?.apply {

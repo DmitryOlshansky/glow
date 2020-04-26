@@ -1,6 +1,6 @@
 package dev.glow.firefly.network
 
-import dev.glow.api.*
+import dev.glow.firefly.api.*
 import dev.glow.firefly.serialization.FireflyException
 
 interface FireflyNetwork {

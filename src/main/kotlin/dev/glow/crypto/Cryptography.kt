@@ -1,6 +1,6 @@
 package dev.glow.crypto
 
-import dev.glow.api.*
+import dev.glow.firefly.api.*
 
 // This interface simply provides the required libsodium primitives on the JVM platform
 interface Cryptography {

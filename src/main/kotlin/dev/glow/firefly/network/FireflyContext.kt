@@ -1,6 +1,6 @@
 package dev.glow.firefly.network
 
-import dev.glow.api.*
+import dev.glow.firefly.api.*
 
 interface FireflyContext {
     // the nonce of the received (handled) message

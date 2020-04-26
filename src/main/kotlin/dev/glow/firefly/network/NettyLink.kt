@@ -1,8 +1,8 @@
 package dev.glow.firefly.network
 
-import dev.glow.api.*
-import dev.glow.api.Remote
-import dev.glow.api.local.Resource
+import dev.glow.firefly.api.*
+import dev.glow.firefly.api.Remote
+import dev.glow.firefly.local.Resource
 import io.netty.channel.AbstractChannel
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean

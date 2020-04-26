@@ -1,6 +1,6 @@
-package dev.glow.api.local
+package dev.glow.firefly.local
 
-import dev.glow.api.*
+import dev.glow.firefly.api.*
 import dev.glow.firefly.network.FireflyContext
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture

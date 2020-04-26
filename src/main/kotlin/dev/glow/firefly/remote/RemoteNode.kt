@@ -1,7 +1,7 @@
-package dev.glow.api.remote
+package dev.glow.firefly.remote
 
-import dev.glow.api.*
-import dev.glow.api.local.Resource
+import dev.glow.firefly.api.*
+import dev.glow.firefly.local.Resource
 import dev.glow.firefly.network.FireflyContext
 import dev.glow.firefly.serialization.Firefly
 import kotlinx.serialization.builtins.list

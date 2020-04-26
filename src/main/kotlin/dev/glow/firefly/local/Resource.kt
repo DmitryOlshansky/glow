@@ -1,8 +1,8 @@
-package dev.glow.api.local
+package dev.glow.firefly.local
 
-import dev.glow.api.Addr
-import dev.glow.api.Id
-import dev.glow.api.Resource
+import dev.glow.firefly.api.Addr
+import dev.glow.firefly.api.Id
+import dev.glow.firefly.api.Resource
 import dev.glow.firefly.network.FireflyContext
 import java.util.concurrent.atomic.AtomicReference
 

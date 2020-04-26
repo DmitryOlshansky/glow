@@ -60,6 +60,14 @@ NIC DMA region -> Shared Packet Assembly Ring of a task that provides that resou
 
 ## Resources and link state propagation
 
+## Multi-cast via the ownership model
+
+The principle is simple - a dedicated dummy resource of the desired type is created to serve as multi-cast address.
+Next any number of destination (subscribed) resources are created and the ownership given away to this multi-case resource.
+Should it be too dangerous to allow full access, the usual trick with limited proxy resources works here as well.
+Next any message sent to this resource is replicated by the network to hit every resource that is owned by it.
+This only work with fire and forget messages, RPCs won't be delivered this way and
+will respond with PROTO error from the first routing node on the path. 
 
 ## Blending with existing protocols
 

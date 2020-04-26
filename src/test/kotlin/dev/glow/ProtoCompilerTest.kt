@@ -292,14 +292,7 @@ class ProtoCompilerTest {
         } ?: throw Exception("Failed to load core.firefly")
         val ts = FireflyTypeSystem()
         val c = ProtoCompiler(ts)
-        println(core)
         val mod = c.module.parse(core)
-        when(mod) {
-            is Error ->
-                fail("Failed to parse core spec of Firefly\ncore.firefly:${mod.format(core)}")
-            else -> {
-
-            }
-        }
+        assert(mod is Got) { "Failed to parse core spec of Firefly\ncore.firefly:${(mod as Error).format(core)}" }
     }
 }

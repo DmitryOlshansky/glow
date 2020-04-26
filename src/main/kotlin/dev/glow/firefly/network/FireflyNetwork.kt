@@ -1,7 +1,6 @@
 package dev.glow.firefly.network
 
 import dev.glow.api.*
-import dev.glow.crypto.SessionKeys
 import dev.glow.firefly.serialization.FireflyException
 
 interface FireflyNetwork {

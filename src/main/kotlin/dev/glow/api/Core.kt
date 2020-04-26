@@ -1,6 +1,8 @@
 package dev.glow.api
 
 import dev.glow.firefly.network.FireflyContext
+import kotlinx.serialization.*
+import java.util.concurrent.CompletableFuture
 
 enum class ErrorCode(val code: Int) {
     // (may be retryable) internal error on some node along the path (or the destination resource provider)
@@ -24,6 +26,10 @@ enum class ErrorCode(val code: Int) {
 annotation class Size(val size: Int)
 annotation class Message
 
+@Serializable
+data class SessionKeys(val rx: AeadKey, val tx: AeadKey)
+
+@Serializable
 data class Bytes(val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -37,6 +43,7 @@ data class Bytes(val value: ByteArray) {
 }
 
 // public key - ed25519
+@Serializable
 data class Id(@Size(32) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -50,6 +57,7 @@ data class Id(@Size(32) val value: ByteArray) {
 }
 
 // secret key for Id
+@Serializable
 data class SecretKey(@Size(32) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -63,6 +71,7 @@ data class SecretKey(@Size(32) val value: ByteArray) {
 }
 
 // signature of Id key
+@Serializable
 data class Signature(@Size(64) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -79,6 +88,7 @@ data class Signature(@Size(64) val value: ByteArray) {
 }
 
 // address - any uniquely identifying prefix of Id
+@Serializable
 data class Addr(val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -92,6 +102,7 @@ data class Addr(val value: ByteArray) {
 }
 
 // public key in key exchange phase
+@Serializable
 data class PubKey(@Size(32) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -105,6 +116,7 @@ data class PubKey(@Size(32) val value: ByteArray) {
 }
 
 // symmetric key for AEAD constuction used in packet auth
+@Serializable
 data class AeadKey(@Size(32) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -118,6 +130,7 @@ data class AeadKey(@Size(32) val value: ByteArray) {
 }
 
 // for reference, the size of AEAD tag
+@Serializable
 data class MAC(@Size(16) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -133,6 +146,7 @@ data class MAC(@Size(16) val value: ByteArray) {
 // nonce that identifies each request,
 // big endian unix epoch seconds in the upper 64 bits (8 first bytes on the wire)
 // big endian number counter in the lower bits
+@Serializable
 data class Nonce(@Size(24) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -145,12 +159,14 @@ data class Nonce(@Size(24) val value: ByteArray) {
     override fun hashCode(): Int = value.contentHashCode()
 }
 
+@Serializable
 data class KeyExchange(
         val id: Id,                         // the id of the node that wants to establish link
         val pk: PubKey,                     // public key used for key exchange
         val signature: Signature            // signed by network secret key i.e. a system or federation key
 )
 
+@Serializable
 data class LinkClass(
     val speed: Int,                         // Long(1 + log10(transfer speed in kb/s)), e.g. 56kbps modem link gets speed class 1
     val latency: Int,                       // Long(1 - log10(rtt of packets in seconds))
@@ -164,6 +180,7 @@ data class LinkClass(
 )
 
 // Link State Packet
+@Serializable
 data class LSP(
         val from: Id,                            // Id of link resource on originator node (in connection-oriented links - client)
         val to: Id,                              // Id of link resource on destination node (in connection-oriented links - server)
@@ -174,6 +191,7 @@ data class LSP(
 )
 
 // Relation - a part of establishing Ownership or Uses relation
+@Serializable
 data class Relation(
         val kind: Int,                           // 0 - uses, 1 - owns
         val master: Id,                          // master is a resource who uses or owns slave
@@ -181,6 +199,7 @@ data class Relation(
 )
 
 // Firefly Network packet
+@Serializable
 data class Packet(
         val src: Addr,
         val dest: Addr,
@@ -217,11 +236,13 @@ interface Proto {
     fun methods(): List<Method>
 }
 
+@Serializable
 data class Parameter(
     val name: String,
     val type: String
 )
 
+@Serializable
 data class Method(
         val name: String,
         val params: List<Parameter>,
@@ -251,10 +272,10 @@ interface Node : Resource {
     // must be sent by the owner of this `node` resource
     // owner of `node` may choose to  create on behalf of somebody and transfer the resource in the next step
     // (how such arrangements are done is outside of Firefly network charter)
-    fun create(fly: FireflyContext, label: String, type: Id, id: Id): Id
+    fun create(fly: FireflyContext, label: String, type: Id, id: Id): CompletableFuture<Id>
 
     // same for reverse operation, must be sent by owner of `id` or by `id` itself
-    fun destroy(fly: FireflyContext, id: Id)
+    fun destroy(fly: FireflyContext, id: Id): CompletableFuture<Unit>
 }
 
 

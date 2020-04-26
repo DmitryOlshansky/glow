@@ -13,8 +13,8 @@ interface FireflyContext {
     // useful in case we wanted to use it ourselves
     fun nextNonce(): Nonce
 
-    // shoot fire and forget message directly (for the very rare occasion it's needed)
-    fun message(bytes: Bytes, nonce: Nonce?)
+    // shoot a network message directly (for the very rare occasion it's needed)
+    fun message(dest: Addr, bytes: Bytes, nonce: Nonce? = null)
 
     // reply to call directly by sending an error without throwing
     // an exception (and catching it later in the upper layer)

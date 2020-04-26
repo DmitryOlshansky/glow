@@ -2,8 +2,6 @@ package dev.glow.crypto
 
 import dev.glow.api.*
 
-data class SessionKeys(val rx: AeadKey, val tx: AeadKey)
-
 // This interface simply provides the required libsodium primitives on the JVM platform
 interface Cryptography {
     fun kexKeyPair(): Pair<PubKey, SecretKey>

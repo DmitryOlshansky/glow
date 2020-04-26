@@ -4,6 +4,7 @@ import dev.glow.api.*
 import dev.glow.crypto.Cryptography
 import dev.glow.firefly.network.FireflyContext
 import dev.glow.firefly.serialization.FireflyException
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Level
 import java.util.logging.Logger.getLogger
@@ -55,9 +56,9 @@ class LocalNode(id: Id, val crypto: Cryptography) : Resource(id), Node {
         }
     }
 
-    override fun create(fly: FireflyContext, label: String, type: Id, id: Id): Id =
-        fly.network.create(fly.network.lookup(this, fly.source), fly.network.typeOf(this, type), id, label).id
+    override fun create(fly: FireflyContext, label: String, type: Id, id: Id): CompletableFuture<Id> =
+        CompletableFuture.completedFuture(fly.network.create(fly.network.lookup(this, fly.source), fly.network.typeOf(this, type), id, label).id)
 
-    override fun destroy(fly: FireflyContext, id: Id) =
-        fly.network.destroy(fly.network.lookup(this, fly.source), id)
+    override fun destroy(fly: FireflyContext, id: Id): CompletableFuture<Unit> =
+        CompletableFuture.completedFuture(fly.network.destroy(fly.network.lookup(this, fly.source), id))
 }

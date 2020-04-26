@@ -1,5 +1,26 @@
 package dev.glow.api
 
+import dev.glow.firefly.network.FireflyContext
+
+enum class ErrorCode(val code: Int) {
+    // (may be retryable) internal error on some node along the path (or the destination resource provider)
+    INTERNAL(0),
+    // (fatal) destination address is unreachable or there is no such resource (anymore)
+    UNREACHABLE(1),
+    // (correctable) the address matches multiple ids
+    AMBIGUOUS(2),
+    // (correctable) the message was too big for the destination resource provider to handle
+    TOO_BIG(3),
+    // (retryable) resource provider handles too many requests per second,
+    // and wants the client to initiate retry with exponential backoff (with ~50% jitter)
+    TOO_FAST(4),
+    // (fatal) the message is doesn't match the protocol of the resource or not understood
+    PROTO(5),
+    // (fatal) the message matches the protocol but fails to adhere to the higher-level contract
+    // on the contents of the fields in the message or sequencing of the messages
+    VIOLATION(6)
+}
+
 annotation class Size(val size: Int)
 annotation class Message
 
@@ -175,8 +196,10 @@ data class Packet(
 interface Resource {
     // Human readable form of the resource contents
     fun describe(): String
+    // transfer ownership to a new owner, must have `access` to `newOwner` Id (ownership is not required)
+    // any resource has `access` to its owner and any resource in the transitive closure of owned resources
+    fun transfer(newOwner: Id)
 }
-
 
 // Meta self-description of a protocol with proto interface
 interface Proto {
@@ -202,24 +225,26 @@ data class Method(
 interface Node {
     // These messages should be sent by both parties simultaneously
     @Message
-    fun start(kx: KeyExchange)
+    fun start(fly: FireflyContext, kx: KeyExchange)
     // Establish our side of link with this node by sending our key (encrypted)
     @Message
-    fun establish(kxNonce: Nonce, encryptedKey: AeadKey)
+    fun establish(fly: FireflyContext, kxNonce: Nonce, encryptedKey: AeadKey)
 
     // HB is sent over established links periodically with cluster addr as destination
     // First case - if there is any change detected in state (by rev field) - flooded to all neighbours except this one
     // Second case - if a new node is discovered - floods to the new node
     // (both could apply)
     @Message
-    fun heartbeat(links: List<LSP>, resources: List<Relation>)
+    fun heartbeat(fly: FireflyContext, links: List<LSP>, resources: List<Relation>)
 
     // label is a human-readable name (must follow a convention and be node-wide unique)
-    // signature is done by key for id
-    fun create(label: String, type: Id, id: Id, signature: Signature): Id
+    // must be sent by the owner of this `node` resource
+    // owner of `node` may choose to  create on behalf of somebody and transfer the resource in the next step
+    // (how such arrangements are done is outside of Firefly network charter)
+    fun create(fly: FireflyContext, label: String, type: Id, id: Id): Id
 
-    // same for reverse operation, needs secret key for that resource Id
-    fun destroy(id: Id, signature: Signature)
+    // same for reverse operation, must be sent by owner of `id` or by `id` itself
+    fun destroy(fly: FireflyContext, id: Id)
 }
 
 

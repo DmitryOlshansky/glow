@@ -1,7 +1,5 @@
 package dev.glow.firefly.compiler
 
-import java.util.function.Function
-
 sealed class Parsed<out T>
 
 data class Got<T>(val value: T) : Parsed<T>()
@@ -24,7 +22,10 @@ data class Error(val message: String, val offset: Int): Parsed<Nothing>() {
 
 data class State(val input: CharSequence, val ofs: Int)
 
-abstract class Peg<T> : Function<State, Pair<State, Parsed<T>>> {
+abstract class Peg<T> {
+
+    abstract fun apply(input: State): Pair<State, Parsed<T>>
+
     fun parse(input: CharSequence): Parsed<T> = apply(State(input, 0)).second
     
     fun<R> map(g: (T) -> R): Peg<R> = object : Peg<R>() {

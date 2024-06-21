@@ -1,7 +1,6 @@
 package dev.glow.firefly.api
 
 import kotlinx.serialization.*
-import java.util.concurrent.CompletableFuture
 
 enum class ErrorCode(val code: Int) {
     // (may be retryable) internal error on some node along the path (or the destination resource provider)
@@ -15,7 +14,7 @@ enum class ErrorCode(val code: Int) {
     // (retryable) resource provider handles too many requests per second,
     // and wants the client to initiate retry with exponential backoff (with ~50% jitter)
     TOO_FAST(4),
-    // (fatal) the message is doesn't match the protocol of the resource or not understood
+    // (fatal) the message doesn't match the protocol of the resource or not understood
     PROTO(5),
     // (fatal) the message matches the protocol but fails to adhere to the higher-level contract
     // on the contents of the fields in the message or sequencing of the messages
@@ -41,10 +40,8 @@ data class SessionKeys(val rx: AeadKey, val tx: AeadKey)
 data class Bytes(val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        other as Bytes
-        if (!value.contentEquals(other.value)) return false
-        return true
+        if (other !is Bytes) return false
+        return value.contentEquals(other.value)
     }
 
     override fun hashCode(): Int = value.contentHashCode()
@@ -55,10 +52,8 @@ data class Bytes(val value: ByteArray) {
 data class Id(@Size(32) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        other as Id
-        if (!value.contentEquals(other.value)) return false
-        return true
+        if (other !is Id) return false
+        return value.contentEquals(other.value)
     }
 
     override fun hashCode(): Int = value.contentHashCode()
@@ -74,10 +69,8 @@ data class Id(@Size(32) val value: ByteArray) {
 data class SecretKey(@Size(32) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        other as SecretKey
-        if (!value.contentEquals(other.value)) return false
-        return true
+        if (other !is SecretKey) return false
+        return value.contentEquals(other.value)
     }
 
     override fun hashCode(): Int = value.contentHashCode()
@@ -88,10 +81,8 @@ data class SecretKey(@Size(32) val value: ByteArray) {
 data class Signature(@Size(64) val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        other as Signature
-        if (!value.contentEquals(other.value)) return false
-        return true
+        if (other !is Signature) return false
+        return value.contentEquals(other.value)
     }
 
     override fun hashCode(): Int {
@@ -105,10 +96,8 @@ data class Signature(@Size(64) val value: ByteArray) {
 data class Addr(val value: ByteArray) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        other as Addr
-        if (!value.contentEquals(other.value)) return false
-        return true
+        if (other !is Addr) return false
+        return value.contentEquals(other.value)
     }
 
     override fun hashCode(): Int = value.contentHashCode()

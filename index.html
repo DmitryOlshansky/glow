@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Glow ShareIt</title>
+        <meta charset="UTF-8"> 
+        <meta name="viewport" content="width=device-width; initial-scale=1.0">
+        <style>
+            body {
+                width: 100%;
+            }
+            #share {
+                display: block;
+                margin-top: 150px;
+                margin-left: auto;
+                margin-right: auto;
+                padding: 20px 100px 20px 100px;
+                font-size: 20px;
+                color: #fff;
+                background-color: rgb(51, 51, 138);
+            }
+            #container {
+                display: block;
+                width: 50%;
+                margin-left: auto;
+                margin-right: auto;
+                margin-top: 40px;
+                font-size: 20px;
+            }
+            #items {
+                padding: 10px;
+                border-radius: 10px;
+                border: 1px solid #000;
+            }
+        </style>
+    </head>
+    <body>
+        <button id="share" onclick="shareClick()">Share</button>
+        <div id="container">
+            <div>Pasted so far...</div>
+            <div id="items">
+
+            </div>
+        </div>
+    </body>
+    <script>
+        function pasteEntry(obj) {
+            let item = document.createElement('div');
+            if (/https?:\/\/.*/.test(obj.text)) {
+                item.innerHTML = "<a href=\"" + obj.text + "\">" + obj.text +"</a>";  
+            }
+            else {
+                item.innerText = obj.text;
+            }
+            return item;
+        }
+        async function shareClick(e) {
+            let clip = await navigator.clipboard.readText();
+            if (clip.length > 0) {
+                let id = self.crypto.randomUUID();
+                let now = new Date();
+                let obj = { id: id, date: now, text: clip }
+                localStorage.setItem("paste_" + id, JSON.stringify(obj));
+                document.querySelector("#items").prepend(pasteEntry(obj));
+            }
+        }
+        function populatePastes() {
+            let array = [];
+            for (let i=0; i<localStorage.length; i++) {
+                let k = localStorage.key(i);
+                if (k.startsWith("paste_")) try {
+                    let obj = JSON.parse(localStorage.getItem(k));
+                    array.push(obj);
+                } catch(e) {
+                    // ignore
+                }
+            }
+            array.sort((a, b) => a.date < b.date);
+            for (let obj of array) {
+                let item = pasteEntry(obj);
+                document.querySelector("#items").prepend(item);
+            }
+        }
+
+        populatePastes();
+    </script>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Glow webapp</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.22.2/dist/css/uikit.min.css" />
+    <script src="main.js"></script>
+  </head>
+  <body>
+    <div class="uk-container">
+    <div class="uk-card uk-card-body" >
+      <h1 class="uk-card-title">
+        WebRTC data channel chat
+      </h1>
+      <input class="uk-input type="text" id="login">
+      <button class="uk-button uk-button-default" id="connect" onclick="return lib.login()">Connectino</button>
+    </div>
+    <h2>Messages</h2>
+    <div id="messages">
+
+    </div>
+
+    <div>
+      <form onsubmit="return lib.message(event)">
+      <input class="uk-input" type="text" id="input">
+    </div>
+  </div>
+  </body>
+</html>

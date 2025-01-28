@@ -9,15 +9,13 @@ export class WebrtcManager {
     /**
      * Creates an instance of WebrtcManager.
      * @param {string} ourPeerId - The ID assigned to this peer
-     * @param {String} ourPeerType - What type of peer this is, this is up to the application. For example peerType can be 'admin', 'vehicle', 'controltower' or 'robot' depending on your application
      * @param {SignalingChannel} signalingChannel - An instance of the signaling channel
      * @param {Object} options - Options of the WebRTC connection.
      * @param {Boolean} verbose - If true the manager will print its status when events occur
      * @memberof WebrtcManager
      */
-    constructor(ourPeerId, ourPeerType, signalingChannel, options, verbose = false) {
+    constructor(ourPeerId, signalingChannel, options, verbose = false) {
         this.ourPeerId = ourPeerId;
-        this.ourPeerType = ourPeerType;
         this.signalingChannel = signalingChannel;
         this.signalingChannel.onMessage = this.signalingMessageHandler.bind(this); // without bind, this in signalingMessageHandler would refer to the SignalingChannel instad of WebrtcManager
         this.signalingChannel.onDisconnect = this.signalingDisconnectHandler.bind(this);
@@ -44,10 +42,7 @@ export class WebrtcManager {
         const { action, connections, bePolite, sdp, ice } = payload;
         switch (action) {
             case "open":
-                connections.forEach((newPeer) => this.addPeer(newPeer.peerId, newPeer.peerType, bePolite, newPeer.canTrickleIceCandidates));
-                break;
-            case "close":
-                this.removePeer(this.peers[from]);
+                connections.forEach((newPeer) => this.addPeer(newPeer.peerId, bePolite, newPeer.canTrickleIceCandidates));
                 break;
             case "sdp":
                 this.verbose ? console.log(`Received ${sdp.type} from ${from}`) : "";
@@ -83,14 +78,13 @@ export class WebrtcManager {
      * @param {Boolean} [canTrickleIceCandidates=true] - Wether the peer is able to trickle the ICE candidates or not (if yes, send SDP directly, ortherwise send it after ICE gathering is complete)
      * @memberof WebrtcManager
      */
-    addPeer(peerId, peerType, polite, canTrickleIceCandidates = true) {
+    addPeer(peerId, polite, canTrickleIceCandidates = true) {
         if (peerId in this.peers) {
             this.verbose ? console.log("A peer connection with", peerId, "already exists") : "";
         } else {
             // Add peer to the object of peers
             this.peers[peerId] = {
                 peerId,
-                peerType,
                 polite,
                 rtcPeerConnection: new RTCPeerConnection(this.config),
                 dataChannel: null,

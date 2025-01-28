@@ -5,7 +5,7 @@
     "main": "server.js",
     "repository": "git@github.com:DmitryOlshansky/glow.git",
     "author": "Dmitry Olshansky",
-    "license": "MIT",
+    "license": "GPL-3.0-only",
     "scripts": {
         "start": "node server.js"
     },

@@ -10,10 +10,13 @@
     <div class="uk-container">
     <div class="uk-card uk-card-body" >
       <h1 class="uk-card-title">
-        WebRTC data channel chat
+        Glow Web RTC WebApp
       </h1>
-      <input class="uk-input type="text" id="login">
-      <button class="uk-button uk-button-default" id="connect" onclick="return lib.login()">Connectino</button>
+      <form onsubmit="return lib.login(event)">
+        <input class="uk-input type="text" id="login">
+        <input class="uk-input type="password" id="secret">
+        <input class="uk-button uk-button-default" id="connect" type="submit" value="Connect">
+      </form>
     </div>
     <h2>Messages</h2>
     <div id="messages">

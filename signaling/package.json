@@ -1,0 +1,29 @@
+{
+    "name": "signaling",
+    "version": "1.0.0",
+    "description": "WebRTC signalling server using Socket.io",
+    "main": "server.js",
+    "repository": "git@github.com:DmitryOlshansky/glow.git",
+    "author": "Dmitry Olshansky",
+    "license": "MIT",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "express": "^4.17.1",
+        "socket.io": "^4.0.1",
+        "socket.io-client": "^4.0.1"
+    },
+    "keywords": [
+        "signaling server",
+        "webrtc",
+        "peer-to-peer",
+        "signaling",
+        "socket.io",
+        "websocket"
+    ],
+    "engines": {
+        "node": ">=14.x"
+    }
+}

@@ -1,5 +1,5 @@
 // IMPORTS
-import { SignalingChannel } from "./signaling-channel.js";"./signaling-channel.js";
+import { SignalingChannel } from "./signaling-channel.js";
 import { WebrtcManager } from "./webrtc-manager.js";
 import { dataChannelHandler } from "./data-channel-handler.js";
 import { v4 } from 'uuid'

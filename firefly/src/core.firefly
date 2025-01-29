@@ -1,7 +1,5 @@
 // May change in future
 type Id = Array[byte, 32]             // public key - ed25519
-type SecretKey = Array[byte, 32]      // secret key for Id
-type Signature = Array[byte, 64]      // signature of Id key
 type Addr = Array[byte]               // address - any uniquely identifying prefix of Id
 
 type PubKey = Array[byte, 32]         // public key in key exchange phase

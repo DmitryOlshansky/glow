@@ -69,7 +69,7 @@ class Peg {
             } else {
                 const result2 = peg.parse(result.state)
                 if (result2.error) {
-                    return Parsed.Error(result2.state, "flatMap")
+                    return result2
                 } else {
                     return Parsed.Value(result2.state, [result.value, result2.value])
                 }
@@ -121,8 +121,8 @@ export function sliceMatching(name, min, cond) {
 
 export function any(name, ...args) {
     return new Peg((state) => {
-        for (peg of args) {
-            const r = peg(state)
+        for (const peg of args) {
+            const r = peg.parse(state)
             if (!r.error) return r;
         }
         return Parsed.Error(state, name)
@@ -134,7 +134,7 @@ export function repeat(name, peg, min, max = 1_000_000_000) {
         let current = state
         const items = []
         for (let i = 0; i < max; i++) {
-            const r = peg(current)
+            const r = peg.parse(current)
             if (r.error) {
                 if (i >= min) {
                     return Parsed.Value(current, items)
@@ -165,12 +165,10 @@ export function seq(cons, ...pegs) {
 export class LazyPeg extends Peg {
     wrapped;
     constructor() {
+        super(s => { this.wrapped.parse(s)})
         this.wrapped = null
     }
-    parse(state) {
-        this.wrapped.parse(state)
-    }
-    bind(peg) {
+    init(peg) {
         this.wrapped = peg;
     }
 }

@@ -159,10 +159,10 @@ describe("optional test", () => {
 })
 
 describe("seq test", () => {
-    const seq = peg.seq((a,b,c) => { return { a, b, c } }, peg.match("A"), peg.match("B"), peg.match("C"))
+    const seq = peg.seq(peg.match("A"), peg.match("B"), peg.match("C"))
     it("should match sequence of ABC", () => {
         const s = state(" ABC", 1)
-        assert.deepEqual(seq.parse(s), value(" ABC", 4, { a: "A", b: "B", c: "C" }))
+        assert.deepEqual(seq.parse(s), value(" ABC", 4, ["A", "B", "C"]))
     })
     it("should fail on smaller sequences", () => {
         const s = state("ABZ", 0)
@@ -171,15 +171,32 @@ describe("seq test", () => {
 })
 
 describe("lazy peg", () => {
-    const sum = new peg.LazyPeg()
+    const sum = new peg.lazy()
     const num = peg.sliceMatching("num", 1, (x) => /\d/.exec(x)).map(x => parseInt(x))
-    const expr = peg.any("expr",
-        peg.seq((a,b,c) => a + c, num, peg.match("+"), sum),
+    const expr = peg.any(
+        "expr",
+        peg.seq(num, peg.match("+"), sum).map(x => x[0] + x[2]),
         num
     )
     sum.init(expr)
     it("should match simple expr", () => {
         const s = state("1+2+3", 0)
         assert.deepEqual(sum.parse(s), value("1+2+3", 5, 6))
+    })
+    it("should match simple prefix of expr", () => {
+        const s = state("2+1+A", 0)
+        assert.deepEqual(sum.parse(s), value("2+1+A", 3, 3))
+    })
+})
+
+describe("eof peg", () => {
+    const p = peg.seq(peg.sliceMatching("num", 1, (x) => /\d/.exec(x)), peg.EOF)
+    it("should not match prefix", () => {
+        const s = state("123r", 0)
+        assert.deepEqual(p.parse(s), error("123r", 3, "EOF"))
+    })
+    it("should match end of input", () => {
+        const s = state("1234", 0)
+        assert.deepEqual(p.parse(s), value("1234", 4, ["1234", true]))
     })
 })

@@ -154,23 +154,27 @@ export function optional(name, peg) {
     return repeat(name, peg, 0, 1).map(x => x.length ? x[0] : null)
 }
 
-export function seq(cons, ...pegs) {
+export function seq(...pegs) {
     let peg = pegs[0].map(x => [x])
     for (let i=1; i<pegs.length; i++) {
         peg = peg.flatMap(pegs[i]).map(x => [...x[0], x[1]])
     }
-    return peg.map(x => cons(...x))
+    return peg
 }
 
-export class LazyPeg extends Peg {
+class LazyPeg extends Peg {
     wrapped;
     constructor() {
-        super(s => { this.wrapped.parse(s)})
+        super(s => this.wrapped.parse(s))
         this.wrapped = null
     }
     init(peg) {
         this.wrapped = peg;
     }
+}
+
+export function lazy() {
+    return new LazyPeg();
 }
 
 export const EOF = new Peg((state) => {

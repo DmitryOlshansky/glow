@@ -19,7 +19,7 @@ class Stream {
         return this.buf[this.rdx++]
     }
     readBytes(len) {
-        const bytes = this.buf.slice(this.rdx, this.rdx + len)
+        const bytes = this.buf.subarray(this.rdx, this.rdx + len) // gets view not a copy!
         this.rdx += len
         return bytes
     }
@@ -51,6 +51,28 @@ export const Byte = new Serializer((value, stream) => {
     return stream.readByte()
 })
 
+export const Base128 = new Serializer((num, stream) => {
+    const parts = []
+    while (num >= 128) {
+        const low = num & 0x7F;
+        num >>= 7
+        parts.push(low)
+    }
+    parts.push(num)
+    for (let i=parts.length-1; i>0; i--) {
+        stream.writeByte(parts[i] | 0x80)
+    }
+    stream.writeByte(parts[0])
+}, (stream) => {
+    let c = 0
+    let num = 0
+    do {
+        c = stream.readByte()
+        num = (num << 7) | (c & 0x7F)
+    } while (c & 0x80)
+    return num
+})
+
 export function ByteArray(size) {
     return new Serializer((value, stream) => {
         stream.writeBytes(value)
@@ -58,6 +80,14 @@ export function ByteArray(size) {
         return stream.readBytes(size)
     })
 }
+
+export const DynByteArray = new Serializer((arr, stream) => {
+    Base128.ser(arr.length, stream)
+    stream.writeBytes(arr)
+}, (stream) => {
+    const len = Base128.deser(stream)
+    return stream.readBytes(len)
+})
 
 export function seq(...serializers) {
     return new Serializer((value, stream) => {

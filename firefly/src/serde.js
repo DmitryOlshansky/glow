@@ -36,7 +36,7 @@ export function stream(size) {
     return new Stream(size)
 }
 
-class Serializer {
+export class Serializer {
     ser;
     deser;
     constructor(ser, deser) {

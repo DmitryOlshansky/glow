@@ -16,7 +16,7 @@ type LinkClass = struct {
                                        // 0 - data link (vs command links that do not route other packets)
                                        // 1 - reliable (true for TCP, RDP, etc.)
                                        // 2 - glow packets are ordered (true in TCP, SCTP)
-                                       // 3 - encrypted link (by itself, Glow always does packet encryption)
+                                       // 3 - encrypted link
 }
 
 // Link State Packet
@@ -81,7 +81,7 @@ proto Node {
     msg heartbeat(links: Array[LSP], resources: Array[Relation])
 
     // label is a human-readable name (must follow a convention and be node-wide unique)
-    def create(label: String, type: Id, id: Id, signature: Signature): Id
+    def create(label: String, type: Id): Id
 
     // 
     def destroy(id: Id): void

@@ -105,3 +105,18 @@ export function seq(...serializers) {
     })
 }
 
+export function arrayOf(serde) {
+    return new Serializer((array, stream) => {
+        Base128.ser(array.length, stream)
+        for (const v of array) {
+            serde.ser(v, stream)
+        }
+    }, (stream) => {
+        const len = Base128.deser(stream)
+        const arr = Array(len)
+        for (let i = 0; i < len; i++) {
+            arr[i] = serde.deser(stream)
+        }
+        return arr
+    })
+}

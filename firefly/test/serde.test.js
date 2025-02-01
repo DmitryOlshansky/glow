@@ -63,3 +63,13 @@ describe("seq of serializers", () => {
 
     })
 })
+
+describe("generic array", () => {
+    it("should serialize each element", () => {
+        const s = serde.stream(100)
+        const b128array = serde.arrayOf(serde.Base128)
+        b128array.ser([128, 129, 1000], s)
+        const v = b128array.deser(s)
+        assert.deepEqual(v, [128, 129, 1000])
+    })
+})

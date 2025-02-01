@@ -1,22 +1,11 @@
 // May change in future
-type Id = Array[byte, 32]             // public key - ed25519
-type Addr = Array[byte]               // address - any uniquely identifying prefix of Id
+type Id = Array[byte, 16]             // Firefly address, 128 bit unique identifier usually UUID
 
-type PubKey = Array[byte, 32]         // public key in key exchange phase
-type AeadKey = Array[byte, 32]        // symmetric key for AEAD constuction used in packet auth
-
-type MAC = Array[byte, 16]            // for reference, the size of AEAD tag
 type Nonce = Array[byte, 24]          // nonce that identifies each request, big endian number
                                       // counter in lower bits
                                       // unix epoch millis in 64 upper bits (8 first bytes on the wire)
 
 type String = Array[byte]             // UTF-8 human-readable string, often used as labels or tags
-
-type KeyExchange = struct {
-    id: PubKey
-    pk: PubKey
-    signature: Signature               // signed by network secret key i.e. a system or federation key
-}
 
 type LinkClass = struct {
     speed: int                         // int(1 + log10(transfer speed in kb/s)), e.g. 56kbps modem link gets speed class 1
@@ -52,11 +41,11 @@ type Packet = struct {
     src: Addr
     dest: Addr
     nonce: Nonce
+    method: int                         // number of method of called resource
     type: int                           // 0:message, 1:request, 2:response, 3:error, 4:cancellation request
     offset: int                         // offset for this fragment
     size: int                           // total size of the full packet, to allow early reject by destination node
-    payload: Array[byte]
-    mac: MAC
+    payload: Array[byte]                // serialized data
 }
 
 // All resources implement this proto, with default implementations for all of methods
@@ -84,33 +73,22 @@ type Method = struct {
 }
 
 // For any message the sender knows its nonce
-// every time there is a need for signature in the proto method,
-// that nonce of the message is prepended during computation
-// signature = Sign(nonce || flatten(args - signature))
 proto Node {
-    // These messages should be sent by both parties simultaneously
-    msg start(kx: KeyExchange)
-    // Establish our side of link with this node by sending our key (encrypted)
-    msg establish(kxNonce: Nonce, encryptedKey: AeadKey)
-
     // HB is sent over established links periodically with cluster addr as destination
     // First case - if there is any change detected in state (by rev field) - flooded to all neighbours except this one
     // Second case - if a new node is discovered - floods to the new node
     // (both could apply)
-    msg heartbeat(links: array[LSP], resources: Array[Relation])
+    msg heartbeat(links: Array[LSP], resources: Array[Relation])
 
     // label is a human-readable name (must follow a convention and be node-wide unique)
-    // signature is done by key for id
     def create(label: String, type: Id, id: Id, signature: Signature): Id
 
-    // same for reverse operation, needs secret key for that resource Id
-    def destroy(id: Id, signature: Signature): void
+    // 
+    def destroy(id: Id): void
 }
 
 
 // A runnable task bound, has implicit use relation to all of the resources of the owner (parent) resource
-// Sand-boxing is as simple as creating a Task using the private key and Id(entity) of some constrained owner resource
-//
 proto Task {
     def configure(): void
 }
@@ -119,7 +97,7 @@ proto Task {
 // Owner task gets a separate send/recv raw packet queues
 // either via shared memory with the node process or in an platform-specific embedding mode
 // Normally each process has exactly one send and one recv packet queue and it's packets are
-// processed by the node (signatures etc.)
+// processed by the node
 proto Link {
     // a packet that will hit the routing framework of the link's parent node (msg is sent by link's task)
     msg outbound(packet: Packet)
@@ -127,6 +105,16 @@ proto Link {
     msg inbound(packet: Packet)
     // configure link parameters
     def configure(up: int, mtu: int, class: LinkClass): void
+}
+
+// Simple key-value store
+proto KV {
+    // list keys starting at offset and upto size items
+    def list(offset: int, size: int): Array[String]
+    // get value by key
+    def get(key: String): Array[byte]
+    // put value by key
+    def put(key: String, value: Array[byte]): void
 }
 
 // Foreign network interface
@@ -183,7 +171,7 @@ proto Sequence : Publisher {
     def write(stream: int, seqNo: int, data: Array[u8]): void
 
     // if abrupt != 0 -> terminate forcibly (e.g. cancel transaction)
-    def end(stream: Array[byte], abrupt: int)
+    def end(stream: int, abrupt: int)
 }
 
 // Out of order flow of messages, think UDP and media streaming protocols

@@ -11,6 +11,7 @@ export class TypeSystem {
     }
 
     resolve(alias) {
+        if (!(alias in this.registry)) throw Error(`Missing entry for alias ${alias} in the type system`)
         const chain = [alias]
         let t = this.registry[alias]
         while (t.kind == "alias") {
@@ -111,7 +112,7 @@ export class Struct extends Type {
     }
 
     serializer() {
-        const seqential = serde.seq(this.fields.map((x) => x.type.serializer()))
+        const seqential = serde.seq(...this.fields.map((x) => x.type.serializer()))
         return new serde.Serializer((obj, stream) => {
             const values = Array(this.fields.length)
             for (const key in obj)
@@ -121,7 +122,7 @@ export class Struct extends Type {
             const values = seqential.deser(stream)
             const obj = {}
             for (let i = 0; i < this.names.length; i++)
-                obj[names[i]] = values[i]
+                obj[this.names[i]] = values[i]
             return obj
         })
     }

@@ -54,11 +54,13 @@ export class Primitive extends Type {
     }
 }
 
+export const Unit = new Primitive(new serde.Serializer((v,s) => {}, (s) => null))
+
 export const Byte = new Primitive(serde.Byte)
 
 export const Int = new Primitive(serde.Base128)
 
-class Generic extends Type {
+export class Generic extends Type {
     constructor(instantiate) {
         super("generic")
         this.instantiate = instantiate
@@ -125,6 +127,39 @@ export class Struct extends Type {
                 obj[this.names[i]] = values[i]
             return obj
         })
+    }
+}
+
+export class And extends Type {
+    constructor(protos) {
+        super("and")
+        this.protos = protos
+    }
+}
+
+export class Method extends Type {
+    constructor(methodKind, name, args, ret) {
+        super("method")
+        this.methodKind = methodKind
+        this.name = name
+        this.args = args
+        this.ret = ret
+    }
+}
+
+export class Proto extends Type {
+    constructor(name, extended, methods) {
+        super("proto")
+        this.name = name
+        this.extended = extended
+        this.methods = methods
+    }
+}
+
+export class Module extends Type {
+    constructor(members) {
+        this("module")
+        this.members = members
     }
 }
 

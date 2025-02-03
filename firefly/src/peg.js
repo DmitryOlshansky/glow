@@ -144,6 +144,7 @@ export function repeat(name, peg, min, max = 1_000_000_000) {
             } else {
                 items.push(r.value)
             }
+            if (current.ofs == r.state.ofs) break // zero-width match
             current = r.state
         }
         return Parsed.Value(current, items)

@@ -35,10 +35,9 @@ export class Type {
 }
 
 export class Alias extends Type {
-    constructor(name, target) {
+    constructor(name) {
         super("alias")
         this.name = name
-        this.target = target
     }
 
     resolve(ts) {

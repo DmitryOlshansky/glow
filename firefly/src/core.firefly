@@ -1,6 +1,8 @@
 // May change in future
 type Id = Array[byte, 16]             // Firefly address, 128 bit unique identifier usually UUID
 
+type Addr = Id
+
 type Nonce = Array[byte, 24]          // nonce that identifies each request, big endian number
                                       // counter in lower bits
                                       // unix epoch millis in 64 upper bits (8 first bytes on the wire)

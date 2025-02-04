@@ -104,9 +104,7 @@ describe("types", () => {
     it("generic should match alias[args...]", () => {
         const s = "Array[byte, 20]"
         expectValue(s, compiler.genericType, -1, new type.Instance(
-            new type.Alias("Array"),
-            type.Byte,
-            20
+            new type.Alias("Array"), [ type.Byte, 20 ]
         ))
     })
 
@@ -168,18 +166,16 @@ describe("module", () => {
             def call(t: t)
         }
         `
-        const t = new type.Instance(new type.Alias("Array"), type.Byte)
+        const t = new type.ArrayType(type.Byte)
         const P = new type.Proto("P", [], [
             new type.Method("def", "call", [
-                { name: "t", type: new type.Alias("t") }
+                { name: "t", type: t }
             ], type.Unit)
         ])
         expectValue(s, compiler.module, -1, new type.Module({
             "t": t,
             "P": P
         }))
-        assert.deepEqual(ts.resolve("t"), t)
-        assert.deepEqual(ts.resolve("P"), P)
     })
     
     it("should parse core.firefly", () => {

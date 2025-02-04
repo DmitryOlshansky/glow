@@ -68,7 +68,7 @@ export class Generic extends Type {
 }
 
 export class Instance extends Type {
-    constructor(generic, ...args) {
+    constructor(generic, args) {
         super("instance")
         this.generic = generic
         this.args = args
@@ -76,11 +76,11 @@ export class Instance extends Type {
 
     resolve(ts) {
         const gen = this.generic.resolve(ts)
-        return gen.instantiate(...this.args)
+        return gen.instantiate(this.args)
     }
 }
 
-class ArrayType extends Type {
+export class ArrayType extends Type {
     constructor(type, length) {
         super("array")
         this.type = type
@@ -104,7 +104,9 @@ class ArrayType extends Type {
     }
 }
 
-const GenericArray = new Generic((args) => new ArrayType(...args))
+const GenericArray = new Generic((args) => {
+    return new ArrayType(...args)
+})
 
 export class Struct extends Type {
     constructor(fields) {
@@ -120,7 +122,7 @@ export class Struct extends Type {
 
     resolve(ts) {
         const resolved = []
-        for (const field in this.fields) {
+        for (const field of this.fields) {
             resolved.push({ type: field.type.resolve(ts), name: field.name })
         }
         return new Struct(resolved)
@@ -158,6 +160,17 @@ export class Method extends Type {
         this.args = args
         this.ret = ret
     }
+
+    resolve(ts) {
+        return new Method(
+            this.methodKind,
+            this.name,
+            this.args.map(arg => {
+                return { name: arg.name, type: arg.type.resolve(ts) }
+            }),
+            this.ret.resolve(ts)
+        )
+    }
 }
 
 export class Proto extends Type {
@@ -166,6 +179,14 @@ export class Proto extends Type {
         this.name = name
         this.extended = extended
         this.methods = methods
+    }
+
+    resolve(ts) {
+        return new Proto(
+            this.name,
+            this.extended.map(x => x.resolve(ts)),
+            this.methods.map(x => x.resolve(ts))
+        )
     }
 }
 

@@ -63,7 +63,7 @@ export class ProtoCompiler {
         this.genericTypeArg = peg.any("generic argument", this.type, this.number)
 
         this.genericType = peg.seq(this.id, this.lit("["), this.delimited(",", this.genericTypeArg), this.lit("]")).map (x =>
-            new type.Instance(new type.Alias(x[0]), ...x[2])
+            new type.Instance(new type.Alias(x[0]), x[2])
         )
 
         this.alias = this.id.map(x => new type.Alias(x))
@@ -116,6 +116,9 @@ export class ProtoCompiler {
             for (const decl of decls[0]) {
                 members[decl.name] = decl.type
                 ts.register(decl.name, decl.type)
+            }
+            for (const name in members) {
+                members[name] = members[name].resolve(this.ts)
             }
             return new type.Module(members)
         })

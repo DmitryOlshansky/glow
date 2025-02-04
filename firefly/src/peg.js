@@ -31,7 +31,7 @@ export class Parsed {
         let lastLineOffset = 0
         const inp = this.state.input
         const ofs = this.state.ofs
-        for (i=0; i < ofs; i++) {
+        for (let i=0; i < ofs; i++) {
             const c = inp[i]
             const nextNl = i + 1 < ofs && inp[i+1] == '\n'
             if (c == '\n' || (c == '\r' && !nextNl)) {
@@ -39,7 +39,7 @@ export class Parsed {
                 lastLineOffset = i
             }
         }
-        const col = offset - lastLineOffset
+        const col = ofs - lastLineOffset
         return `${line}:${col}: expected ${this.error}`
     }
 }

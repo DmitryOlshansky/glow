@@ -67,6 +67,19 @@ export class Generic extends Type {
     }
 }
 
+export class Instance extends Type {
+    constructor(generic, ...args) {
+        super("instance")
+        this.generic = generic
+        this.args = args
+    }
+
+    resolve(ts) {
+        const gen = this.generic.resolve(ts)
+        return gen.instantiate(...this.args)
+    }
+}
+
 class ArrayType extends Type {
     constructor(type, length) {
         super("array")
@@ -158,7 +171,7 @@ export class Proto extends Type {
 
 export class Module extends Type {
     constructor(members) {
-        this("module")
+        super("module")
         this.members = members
     }
 }

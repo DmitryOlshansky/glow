@@ -62,6 +62,16 @@ describe("dynarray", () => {
     })
 })
 
+describe("string", () => {
+    it("should serialize as UTF-8", () => {
+        const s = serde.stream(100)
+        const msg = "Привет, мир!"
+        serde.String.ser(msg, s)
+        const out = serde.String.deser(s)
+        assert.deepEqual(out, msg)
+    })
+})
+
 describe("seq of serializers", () => {
     it("should serialize each in turn", () => {
         const s = serde.stream(10)

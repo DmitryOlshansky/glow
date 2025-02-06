@@ -7,8 +7,6 @@ type Nonce = Array[byte, 24]          // nonce that identifies each request, big
                                       // counter in lower bits
                                       // unix epoch millis in 64 upper bits (8 first bytes on the wire)
 
-type String = Array[byte]             // UTF-8 human-readable string, often used as labels or tags
-
 type LinkClass = struct {
     speed: int                         // int(1 + log10(transfer speed in kb/s)), e.g. 56kbps modem link gets speed class 1
     latency: int                       // int(1 - log10(rtt of packets in seconds))

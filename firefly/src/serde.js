@@ -79,6 +79,15 @@ export const Base128 = new Serializer((num, stream) => {
     return num
 })
 
+export const String = new Serializer((str, stream) => {
+    const enc = new TextEncoder('utf-8')
+    const bytes = enc.encode(str)
+    DynByteArray.ser(bytes, stream)
+}, (stream) => {
+    const bytes = DynByteArray.deser(stream)
+    return new TextDecoder('utf-8').decode(bytes)
+})
+
 export function ByteArray(size) {
     return new Serializer((value, stream) => {
         stream.writeBytes(value)

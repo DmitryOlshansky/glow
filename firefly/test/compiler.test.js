@@ -1,5 +1,6 @@
 import * as type from "../src/type.js"
 import * as peg from "../src/peg.js"
+import * as serde from "../src/serde.js"
 import { ProtoCompiler } from "../src/compiler.js"
 import { assert } from "chai"
 
@@ -127,11 +128,25 @@ describe("protocol", () => {
         const s = "msg ping()"
         expectValue(s, compiler.method, -1, new type.Method("msg", "ping", [], type.Unit))
     })
+
     it("method should match method with arguments", () => {
         const s = "def method(arg: int): Id"
         expectValue(s, compiler.method, -1, new type.Method("def", "method", [
             { name: "arg", type: type.Int }
         ], new type.Alias("Id")))
+    })
+
+    it("method should serialize arguments as array", () => {
+        const m = new type.Method("def", "method", [
+            { name: "arg", type: type.Int },
+            { name: "arg2", type: type.Int }
+        ], new type.ArrayType(type.Byte, 16))
+        const args = m.serializer()
+        const a = [1, 2]
+        const s = serde.stream(100)
+        args.ser(a, s)
+        assert.deepEqual(args.deser(s), [1, 2])
+
     })
 
     it("protoDef should match empty protocol", () => {

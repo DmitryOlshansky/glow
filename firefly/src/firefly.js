@@ -136,7 +136,7 @@ export class Node extends Resource {
     }
 
     addLink(to, transport) {
-        const link = new Link(v4(), this, this.id, to, this.packetSerde, transport)
+        const link = new Link(genId(), this, this.id, to, this.packetSerde, transport)
         this.nodes[to] = new RemoteNode(to, {})
         this.links[to] = link
     }

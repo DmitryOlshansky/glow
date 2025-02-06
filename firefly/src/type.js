@@ -60,6 +60,8 @@ export const Byte = new Primitive(serde.Byte)
 
 export const Int = new Primitive(serde.Base128)
 
+export const String = new Primitive(serde.String)
+
 export class Generic extends Type {
     constructor(instantiate) {
         super("generic")
@@ -207,8 +209,10 @@ export class Module extends Type {
 
 export function FireFly(){
     const ts = new TypeSystem()
+    ts.register("bool", Byte)
     ts.register("byte", Byte)
     ts.register("int", Int)
+    ts.register("String", String)
     ts.register("Array", GenericArray)
     return ts
 }

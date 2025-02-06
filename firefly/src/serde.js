@@ -3,10 +3,16 @@ class Stream {
     buf;
     rdx;
     wdx;
-    constructor(size) {
-        this.buf = new Uint8Array(new ArrayBuffer(size));
-        this.rdx = 0;
-        this.wdx = 0;
+    constructor(arg) {
+        if (typeof arg == "number") {
+            this.buf = new Uint8Array(new ArrayBuffer(arg));
+            this.rdx = 0;
+            this.wdx = 0;
+        } else {
+            this.buf = new Uint8Array(arg)
+            this.rdx = 0
+            this.wdx = this.buf.length
+        }
     }
     writeByte(byte) {
         this.buf[this.wdx++] = byte
@@ -32,8 +38,8 @@ class Stream {
     }
 }
 
-export function stream(size) {
-    return new Stream(size)
+export function stream(arg) {
+    return new Stream(arg)
 }
 
 export class Serializer {

@@ -14,7 +14,7 @@
     "protocol",
     "network"
   ],
-  "type" : "module",
+  "type": "module",
   "author": "Dmitry Olshansky",
   "license": "GPL-3.0-only",
   "bugs": {
@@ -24,5 +24,8 @@
   "devDependencies": {
     "chai": "^5.1.2",
     "mocha": "^11.1.0"
+  },
+  "dependencies": {
+    "uuid": "^11.0.5"
   }
 }

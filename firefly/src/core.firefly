@@ -34,6 +34,7 @@ type LSP = struct {
 // Relation - a part of establishing Ownership or Uses relation
 type Relation = struct {
     kind: int                           // 0 - uses, 1 - owns
+    proto: String                       // proto of a slave resource
     master: Id                          // master is a resource who uses or owns slave
     slave: Id                           // slave is a resource used or owner by master
 }
@@ -85,6 +86,8 @@ proto Node {
     // label is a human-readable name (must follow a convention and be node-wide unique)
     def create(label: String, type: Id): Id
 
+    //
+    def ping(data: Array[byte]): Array[byte]
     // 
     def destroy(id: Id): void
 }

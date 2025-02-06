@@ -18,6 +18,16 @@ describe("byte serializer", () => {
     })
 })
 
+describe("stream of array", () => {
+    it("should wrap array", () => {
+        const s = serde.stream(8)
+        serde.Byte.ser(1, s)
+        const s2 = serde.stream(s.toArray())
+        const b = serde.Byte.deser(s2)
+        assert.equal(b, 1)
+    })
+})
+
 describe("base128 serializer", () => {
     it("should serialize small integers", () => {
         const s = serde.stream(10)

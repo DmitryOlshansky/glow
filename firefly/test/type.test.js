@@ -74,6 +74,19 @@ describe("types deducing serializers", () => {
     })
 })
 
+describe("method provides serializers for args and return", () => {
+    it("should serialize args as array", () => {
+        const m = new type.Method("def", "method", [
+            { name: "arg", type: type.Int },
+            { name: "arg2", type: type.Int }
+        ], new type.ArrayType(type.Byte, 16))
+        const s = serde.stream(10)
+        const argsSerde = m.serializer()
+        argsSerde.ser([1, 2], s)
+        assert.deepEqual(argsSerde.deser(s), [1, 2])
+    })
+})
+
 describe("struct types deducing serializer", () => {
     it("should compose for structs keeping order", () => {
         const t = new type.Struct([

@@ -171,6 +171,14 @@ export class Method extends Type {
             this.ret.resolve(ts)
         )
     }
+
+    serializer() {
+        return serde.seq(...this.args.map(x => x.type.serializer()))
+    }
+
+    returnSerializer() {
+        return this.ret.serializer()
+    }
 }
 
 export class Proto extends Type {

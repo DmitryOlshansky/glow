@@ -78,7 +78,7 @@ export class Instance extends Type {
 
     resolve(ts) {
         const gen = this.generic.resolve(ts)
-        return gen.instantiate(this.args)
+        return gen.instantiate(this.args).resolve(ts)
     }
 }
 
@@ -204,6 +204,16 @@ export class Module extends Type {
     constructor(members) {
         super("module")
         this.members = members
+    }
+
+    proto(name) {
+        if (this.members[name].kind != "proto") throw new Error(`"${name}" is not a proto`)
+        return this.members[name]
+    }
+
+    struct(name) {
+        if (this.members[name].kind != "struct") throw new Error(`"${name} is not a struct`)
+        return this.members[name]
     }
 }
 

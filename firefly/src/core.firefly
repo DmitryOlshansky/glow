@@ -3,7 +3,7 @@ type Id = Array[byte, 16]             // Firefly address, 128 bit unique identif
 
 type Addr = Id
 
-type Nonce = Array[byte, 24]          // nonce that identifies each request, big endian number
+type Nonce = Array[byte, 16]          // nonce that identifies each request
                                       // counter in lower bits
                                       // unix epoch millis in 64 upper bits (8 first bytes on the wire)
 
@@ -171,7 +171,7 @@ proto Sequence : Publisher {
     // seqNum == 0 -> new stream of data, start of a new sequential stream
     // seqNo wraps around after 2^48 - 1 but to one, not to zero(!)
     // seqNo 2^^48 is written as 1 and sequential process is continued as 2, 3, ...
-    def write(stream: int, seqNo: int, data: Array[u8]): void
+    def write(stream: int, seqNo: int, data: Array[byte]): void
 
     // if abrupt != 0 -> terminate forcibly (e.g. cancel transaction)
     def end(stream: int, abrupt: int)

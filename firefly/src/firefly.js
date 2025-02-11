@@ -11,9 +11,26 @@ const compiler = new ProtoCompiler(system)
 const s = new peg.State(protocolDefinition, 0)
 const module = compiler.module.parse(s).value
 
+const HEARTBEAT = 1000
+
+const MessageType = {
+    MSG: 0,
+    REQUEST: 1,
+    REPLY: 2,
+    ERROR: 3,
+    CANCELLATION: 4
+}
+
+const LinkFlags = {
+    DATA_LINK: 1,
+    RELIBLE: 2,
+    ORDERED: 4,
+    ENCRYPTED: 8
+}
+
 class Resource {
     id; // UUID
-    owner; // object of Resource type that owns this resource, null if Node
+    owner; // object of Resource type that owns this resource, this if Node
     proto; // protocol of this resource
     constructor(id, owner, proto) {
         this.id = id   
@@ -54,7 +71,8 @@ class RemoteNode extends Resource {
     */
     resources;
     constructor(id, resources) {
-        super(id, null, module.members['Node'])
+        super(id, null, module.proto('Node'))
+        this.owner = this
         this.resources = resources
         this.resources[id] = this
     }
@@ -75,9 +93,12 @@ export class Node extends Resource {
     packets;
     // packet serde
     packetSerde;
+    // nonce counter
+    nonceCounter;
 
     constructor(id, timer) {
-        super(id, null, module.members['Node'])
+        super(id, null, module.proto('Node'))
+        this.owner = this
         this.timer = timer
         this.resources = {}
         this.resources[id] = this
@@ -86,6 +107,7 @@ export class Node extends Resource {
         this.nodes[this.id] = this
         this.packets = {}
         this.packetSerde = module.members['Packet'].serializer()
+        this.timer.setInterval(HEARTBEAT, () => this.loop())
     }
 
     outbound(packet) {
@@ -101,7 +123,6 @@ export class Node extends Resource {
     }
 
     inbound(packet) {
-        console.log(packet)
         if (packet.dest in this.resources) {
             const resource = this.resources[packet.dest]
             const method = resource.indexToMethod(packet.method)
@@ -117,13 +138,13 @@ export class Node extends Resource {
                         dest: packet.src,
                         nonce: packet.nonce,
                         method: packet.method,
-                        type: 2,
+                        type: MessageType.REPLY,
                         offset: 0,
                         size: 0,
                         payload: respStream.toArray()
                     })
                 }
-            } else if (packet.type == 2) {
+            } else if (packet.type == MessageType.REPLY) {
                 const entry = this.packets[packet.nonce]
                 delete this.packets[packet.nonce]
                 const ret = method.returnSerializer().deser(serde.stream(packet.payload))
@@ -139,6 +160,10 @@ export class Node extends Resource {
         const link = new Link(genId(), this, this.id, to, this.packetSerde, transport)
         this.nodes[to] = new RemoteNode(to, {})
         this.links[to] = link
+    }
+
+    addResource(resource) {
+        this.resources[resource.id] = resource
     }
 
     call(dest, method, ...args) {
@@ -177,12 +202,12 @@ export class Node extends Resource {
             dest: dest,
             nonce: this.genNonce(),
             method: index,
-            type: all[index].methodKind == "msg" ? 0 : 1,
+            type: all[index].methodKind == "msg" ? MessageType.MSG : MessageType.REQUEST,
             offset: 0, //TODO: handle fragmentation in the link
             size: 0, //TODO: calculate size for fragmentation
             payload: stream.toArray()
         }
-        if(packet.type == 1) {
+        if(packet.type == MessageType.REQUEST) {
             this.packets[packet.nonce] = { dest: packet.id, resolve, reject }
         }
         this.outbound(packet)
@@ -193,12 +218,12 @@ export class Node extends Resource {
         // send Heartbeats
         for (const id in this.nodes) {
             if (id == this.id) continue
-            this.call(id, "heartbeat", [
-
-                ], this.resources.map(r => {
-                    return { kind: 1, master: this.id, slave: r.id, proto: r.proto.name }
-                })
-            )
+            const relations = []
+            for (const resId in this.resources) {
+                const r = this.resources[resId]
+                relations.push({ kind: 1, master: this.id, slave: r.id, proto: r.proto.name })
+            }
+            this.call(this.nodes[id].id, "heartbeat", [], relations)
         }
     }
 
@@ -214,18 +239,32 @@ export class Node extends Resource {
     }
 
     genNonce() {
-        const s = serde.stream(24)
+        const cnt = this.nonceCounter++
+        if (cnt == (1<<30)) {
+            this.nonceCounter = 0
+        }
         const a = []
-        a[23] = 1
+        writeNumber64(cnt, a, 0)
+        writeNumber64(Date.now(), a, 8)
+        
         const arr = new Uint8Array(a)
-        s.writeBytes(arr)
 
-        return s.toArray()
+        return arr
     }
 
     // protocol implementation
     ping(data) {
         return data
+    }
+
+    heartbeat(lsp, relations) {
+        const nodes = {}
+        nodes[this.id] = this
+        for (const rel of relations) {
+            if (!(rel.master in nodes)) nodes[rel.master] = new RemoteNode(rel.master, {})
+            nodes[rel.master].resources[rel.slave] = new Resource(rel.slave, nodes[rel.master], module.proto(rel.proto))
+        }
+        this.nodes = nodes
     }
 }
 
@@ -235,7 +274,7 @@ class Link extends Resource {
     to;
     packetSerde;
     constructor(id, owner, from, to, packetSerde, transport) {
-        super(id, owner, module.members['Link'])
+        super(id, owner, module.proto('Link'))
         this.from = from
         this.to = to
         this.packetSerde = packetSerde
@@ -245,7 +284,7 @@ class Link extends Resource {
 
     inbound(data) {
         const packet = this.packetSerde.deser(serde.stream(data))
-        this.owner.inbound(packet) // hit our Node in future need to dispatch to process
+        this.owner.inbound(packet) // hit our Node in the future need to dispatch to process
     }
 
     outbound(packet) {
@@ -255,10 +294,49 @@ class Link extends Resource {
     }
 }
 
+export class InMemoryKV extends Resource {
+    kv;
+    constructor(id, owner) {
+        super(id, owner, module.proto('KV'))
+        this.kv = {}
+    }
+
+    // list keys starting at offset and upto size items
+    // def list(offset: int, size: int): Array[String]
+    list(offset, size) {
+        const items = []
+        for (const key in this.kv) {
+            items.push(key)
+        }
+        items.sort((a,b) => a < b)
+        const clamp = (x) => x < items.length ? x : items.length
+        return items.slice(clamp(offset), clamp(offset+size))
+    }
+    // get value by key
+    // def get(key: String): Array[byte]
+    get(key) {
+        if (!(key in this.kv)) throw Error(`Key "${key} not found in this kv`)
+        return this.kv[key]
+    }
+    // put value by key
+    // def put(key: String, value: Array[byte]): void
+    put(key, value) {
+        this.kv[key] = value
+    }
+}
+
+
 export function genId() {
     const buf = new Uint8Array(new ArrayBuffer(16))
     v4({}, buf, 0)
     return buf
+}
+
+function writeNumber64(value, arr, offset) {
+    for (let i = offset; i < offset + 8; i++) {
+        arr[i] = value & 0xFF
+        value >>= 8
+    }
 }
 
 export function transportPair() {

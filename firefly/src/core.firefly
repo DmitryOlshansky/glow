@@ -120,6 +120,11 @@ proto KV {
     def put(key: String, value: Array[byte]): void
 }
 
+// Simple remote FS 
+proto FS {
+    def get(path: String): Stream[0, byte]
+}
+
 // Foreign network interface
 
 proto FNI {

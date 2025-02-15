@@ -1,5 +1,6 @@
 import { FireFly } from "./type.js"
 import { ProtoCompiler } from "./compiler.js"
+import { Stream } from "./stream.js"
 import * as peg from "./peg.js"
 import * as serde from "./serde.js"
 import { v4 } from 'uuid'
@@ -18,7 +19,10 @@ const MessageType = {
     REQUEST: 1,
     REPLY: 2,
     ERROR: 3,
-    CANCELLATION: 4
+    CANCELLATION: 4,
+    REQUEST_STREAM: 5,
+    REPLY_STREAM: 6,
+
 }
 
 const LinkFlags = {
@@ -106,6 +110,7 @@ export class Node extends Resource {
         this.nodes = {}
         this.nodes[this.id] = this
         this.packets = {}
+        this.streams = {}
         this.nonceCounter = 0
         this.packetSerde = module.members['Packet'].serializer()
         this.timer.setInterval(HEARTBEAT, () => this.loop())
@@ -125,16 +130,20 @@ export class Node extends Resource {
 
     inbound(packet) {
         if (packet.dest in this.resources) {
-            if (packet.type == 1 || packet.type == 0) {
+            if (packet.type == MessageType.REQUEST || packet.type == MessageType.MSG) {
                 try {
                     const resource = this.resources[packet.dest]
                     const method = resource.indexToMethod(packet.method)
                     const args = method.serializer().deser(serde.stream(packet.payload))
                     const ret = resource[method.name](...args)
                     const respStream = serde.stream(1<<14)
-                    method.returnSerializer().ser(ret, respStream)
+                    if (ret && ret.kind == 'Stream') {
+                        method.returnSerializer().ser([method.ret.id, []], respStream)    
+                    } else {
+                        method.returnSerializer().ser(ret, respStream)
+                    }
                     // reply
-                    if (packet.type == 1) {
+                    if (packet.type == MessageType.REQUEST) {
                         this.outbound({
                             src: resource.id,
                             dest: packet.src,
@@ -144,6 +153,50 @@ export class Node extends Resource {
                             offset: 0,
                             size: 0,
                             payload: respStream.toArray()
+                        })
+                    }
+                    if (ret && ret.kind == 'Stream') {
+                        ret.onData((data) => {
+                            const s = serde.stream(data.length + 8)
+                            method.returnSerializer().ser([method.ret.id, data], s)
+                            this.outbound({
+                                src: resource.id,
+                                dest: packet.src,
+                                nonce: packet.nonce,
+                                method: packet.method,
+                                type: MessageType.REPLY_STREAM,
+                                offset: 0,
+                                size: 0,
+                                payload: s.toArray()
+                            })
+                        })
+                        ret.onError((err) => {
+                            const s = serde.stream(1024)
+                            serde.String.ser(err.toString(), s)
+                            this.outbound({
+                                src: resource.id,
+                                dest: packet.src,
+                                nonce: packet.nonce,
+                                method: packet.method,
+                                type: MessageType.ERROR,
+                                offset: 0,
+                                size: 0,
+                                payload: s.toArray()
+                            })
+                        })
+                        ret.onClose(() => {
+                            const s = serde.stream(100)
+                            method.returnSerializer().ser([method.ret.id, []], s)
+                            this.outbound({
+                                src: resource.id,
+                                dest: packet.src,
+                                nonce: packet.nonce,
+                                method: packet.method,
+                                type: MessageType.REPLY_STREAM,
+                                offset: 0,
+                                size: 0,
+                                payload: s.toArray()
+                            })
                         })
                     }
                 } catch(e) {
@@ -166,12 +219,35 @@ export class Node extends Resource {
                 const entry = this.packets[packet.nonce]
                 delete this.packets[packet.nonce]
                 const ret = method.returnSerializer().deser(serde.stream(packet.payload))
-                entry.resolve(ret)
+                if (method.ret.kind == 'stream') {
+                    const s = new Stream()
+                    this.streams[packet.nonce] = s
+                    s.write(ret[1]) // TODO: stream ids
+                    return entry.resolve(s)
+                } else {
+                    return entry.resolve(ret)
+                }
+            } else if (packet.type == MessageType.REPLY_STREAM) {
+                const resource = this.lookupResource(packet.src)
+                const method = resource.indexToMethod(packet.method)
+                const ret = method.returnSerializer().deser(serde.stream(packet.payload))
+                this.streams[packet.nonce].write(ret[1]) // TODO: stream ids
+                if (ret[1].length == 0) {
+                    this.streams[packet.nonce].close()
+                    delete this.streams[packet.nonce]
+                }
             } else if (packet.type == MessageType.ERROR) {
-                const entry = this.packets[packet.nonce]
-                delete this.packets[packet.nonce]
                 const error = new Error(serde.String.deser(serde.stream(packet.payload)))
-                entry.reject(error)
+                if (packet.nonce in this.streams) {
+                    this.streams[packet.nonce].error(error)
+                    delete this.streams[packet.nonce]
+                } else if (packet.nonce in this.packets) {
+                    const entry = this.packets[packet.nonce]
+                    delete this.packets[packet.nonce]
+                    entry.reject(error)
+                } else {
+                    console.error(error)
+                }
             }
         } else {
             // TODO: here we select the right next hop if possible
@@ -345,6 +421,40 @@ export class InMemoryKV extends Resource {
     // def put(key: String, value: Array[byte]): void
     put(key, value) {
         this.kv[key] = value
+    }
+}
+
+export class LocalFS extends Resource {
+    constructor(id, owner) {
+        super(id, owner, module.proto('FS'))
+    }
+
+    readPart(fd, stream) {
+        fs.read(fd, (err, bytesRead, buf) => {
+            if(err) {
+                stream.error(err)
+            } else if (bytesRead > 0) {
+                stream.write(buf)
+                this.readPart(fd, stream)
+            } else {
+                stream.close()
+            }
+        })
+    }
+
+    get(path) {
+        const stream = new Stream()
+        const rs = fs.createReadStream(path, { highWaterMark: 1024 })
+        rs.on('data', (buf) => {
+            stream.write(buf)
+        })
+        rs.on('error', (err) => {
+            stream.error(err)
+        })
+        rs.on('end', () => {
+            stream.close()
+        })
+        return stream        
     }
 }
 

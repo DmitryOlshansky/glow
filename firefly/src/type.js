@@ -106,8 +106,32 @@ export class ArrayType extends Type {
     }
 }
 
+export class Stream extends Type {
+    constructor(id, type) {
+        super("stream")
+        this.id = id
+        this.type = type
+    }
+
+    resolve(ts) {
+        return new Stream(this.id, this.type.resolve(ts))
+    }
+
+    serializer() {
+        if (this.type == Byte) {
+            return serde.seq(serde.Base128, serde.DynByteArray)
+        } else {
+            return serde.seq(serde.Base128, serde.arrayOf(this.type.serializer()))
+        }
+    }
+}
+
 const GenericArray = new Generic((args) => {
     return new ArrayType(...args)
+})
+
+const GenericStream = new Generic((args) => {
+    return new Stream(...args)
 })
 
 export class Struct extends Type {
@@ -224,5 +248,6 @@ export function FireFly(){
     ts.register("int", Int)
     ts.register("String", String)
     ts.register("Array", GenericArray)
+    ts.register("Stream", GenericStream)
     return ts
 }

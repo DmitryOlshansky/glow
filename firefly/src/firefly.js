@@ -106,6 +106,7 @@ export class Node extends Resource {
         this.nodes = {}
         this.nodes[this.id] = this
         this.packets = {}
+        this.nonceCounter = 0
         this.packetSerde = module.members['Packet'].serializer()
         this.timer.setInterval(HEARTBEAT, () => this.loop())
     }
@@ -124,31 +125,53 @@ export class Node extends Resource {
 
     inbound(packet) {
         if (packet.dest in this.resources) {
-            const resource = this.resources[packet.dest]
-            const method = resource.indexToMethod(packet.method)
             if (packet.type == 1 || packet.type == 0) {
-                const args = method.serializer().deser(serde.stream(packet.payload))
-                const ret = resource[method.name](...args)
-                const respStream = serde.stream(1<<14)
-                method.returnSerializer().ser(ret, respStream)
-                // reply
-                if (packet.type == 1) {
+                try {
+                    const resource = this.resources[packet.dest]
+                    const method = resource.indexToMethod(packet.method)
+                    const args = method.serializer().deser(serde.stream(packet.payload))
+                    const ret = resource[method.name](...args)
+                    const respStream = serde.stream(1<<14)
+                    method.returnSerializer().ser(ret, respStream)
+                    // reply
+                    if (packet.type == 1) {
+                        this.outbound({
+                            src: resource.id,
+                            dest: packet.src,
+                            nonce: packet.nonce,
+                            method: packet.method,
+                            type: MessageType.REPLY,
+                            offset: 0,
+                            size: 0,
+                            payload: respStream.toArray()
+                        })
+                    }
+                } catch(e) {
+                    const errorStream = serde.stream(1<<14)
+                    serde.String.ser(e.toString(), errorStream)
                     this.outbound({
-                        src: resource.id,
+                        src: packet.dest,
                         dest: packet.src,
                         nonce: packet.nonce,
                         method: packet.method,
-                        type: MessageType.REPLY,
+                        type: MessageType.ERROR,
                         offset: 0,
                         size: 0,
-                        payload: respStream.toArray()
+                        payload: errorStream.toArray()
                     })
                 }
             } else if (packet.type == MessageType.REPLY) {
+                const resource = this.lookupResource(packet.src)
+                const method = resource.indexToMethod(packet.method)
                 const entry = this.packets[packet.nonce]
                 delete this.packets[packet.nonce]
                 const ret = method.returnSerializer().deser(serde.stream(packet.payload))
                 entry.resolve(ret)
+            } else if (packet.type == MessageType.ERROR) {
+                const entry = this.packets[packet.nonce]
+                delete this.packets[packet.nonce]
+                const error = new Error(serde.String.deser(serde.stream(packet.payload)))
+                entry.reject(error)
             }
         } else {
             // TODO: here we select the right next hop if possible
@@ -315,7 +338,7 @@ export class InMemoryKV extends Resource {
     // get value by key
     // def get(key: String): Array[byte]
     get(key) {
-        if (!(key in this.kv)) throw Error(`Key "${key} not found in this kv`)
+        if (!(key in this.kv)) throw Error(`Key "${key}" not found in this kv`)
         return this.kv[key]
     }
     // put value by key

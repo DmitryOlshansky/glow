@@ -46,5 +46,18 @@ describe("firefly cluster", () => {
     it("should exchange topology after interval elapsed", async () => {
         TestTimer.tick()
         await node1.call(kv2.id, "put", "EDF", new Uint8Array([4,5,6]))
+        const rt = await node1.call(kv2.id, "get", "EDF")
+        assert.deepEqual(rt, new Uint8Array([4,5,6]))
+
+    })
+
+    it("should transport an error across network", async () => {
+        TestTimer.tick()
+        try {
+            await node1.call(kv2.id, "get", "Not exists")
+            assert.fail("should throw")
+        } catch (e) {
+            assert.match(e.toString(), /.*Key ".*" not found in this kv/)
+        }
     })
 })

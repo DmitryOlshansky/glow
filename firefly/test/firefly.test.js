@@ -2,6 +2,7 @@ import * as ff from '../src/firefly.js'
 import * as fs from 'node:fs'
 import { v4 } from 'uuid'
 import { assert } from 'chai'
+import { decode } from 'node:punycode'
 
 const TestTimer = { 
     setInterval: function(interval, callback) {
@@ -91,20 +92,22 @@ describe("firefly cluster", () => {
         let fin = null
         let rej = null
         let buf = ""
+        const dec = new TextDecoder('utf-8')
         const promise = new Promise((complete, reject) => { 
             fin = complete
             rej = reject
         })
         stream.onData((data) => {
-            console.log("data", data)
-            buf += data.toString()
+            buf += dec.decode(data, { stream: true })
         })
         stream.onError((err) => {
             rej(err)
         })
         stream.onClose(() => {
+            buf += dec.decode()
             fin()
         })
         await promise
+        assert.deepEqual(buf, fs.readFileSync("../README.md").toString())
     })
 })

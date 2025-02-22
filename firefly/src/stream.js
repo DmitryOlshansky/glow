@@ -2,7 +2,6 @@
 export class Stream {
     kind;
     constructor() {
-        this.kind = 'Stream'
         this.buffer = new Array()
         this.errorBuffer = null
         this.closed = null

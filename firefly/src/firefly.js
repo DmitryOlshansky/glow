@@ -5,6 +5,7 @@ import * as peg from "./peg.js"
 import * as serde from "./serde.js"
 import { v4 } from 'uuid'
 import * as fs from 'node:fs'
+import * as fsPromises from 'node:fs/promises'
 
 const protocolDefinition = fs.readFileSync("./src/core.firefly").toString()
 const system = FireFly()
@@ -135,7 +136,18 @@ export class Node extends Resource {
                     const resource = this.resources[packet.dest]
                     const method = resource.indexToMethod(packet.method)
                     const args = method.serializer().deser(serde.stream(packet.payload))
-                    const ret = resource[method.name](...args)
+                    const withStreams = []
+                    for (let i = 0; i< method.args; i++) {
+                        if (method.args[i].kind == 'stream') {
+                            const s = new Stream()
+                            if (!(packet.nonce in this.stream)) this.streams[packet.nonce] = {}
+                            this.streams[packet.nonce][method.args[i].id] = s
+                            withStreams.push(s)
+                        } else {
+                            withStreams.push(args[i])
+                        }
+                    }
+                    const ret = resource[method.name](...withStreams)
                     const respStream = serde.stream(1<<14)
                     if (ret && ret.kind == 'Stream') {
                         method.returnSerializer().ser([method.ret.id, []], respStream)    
@@ -155,9 +167,9 @@ export class Node extends Resource {
                             payload: respStream.toArray()
                         })
                     }
-                    if (ret && ret.kind == 'Stream') {
+                    if (method.ret.kind == 'stream') {
                         ret.onData((data) => {
-                            const s = serde.stream(data.length + 8)
+                            const s = serde.stream(data.length + 8) // TODO: wont work for streams other than bytes 
                             method.returnSerializer().ser([method.ret.id, data], s)
                             this.outbound({
                                 src: resource.id,
@@ -236,6 +248,25 @@ export class Node extends Resource {
                     this.streams[packet.nonce].close()
                     delete this.streams[packet.nonce]
                 }
+            } else if (packet.type == MessageType.REQUEST_STREAM) {
+                const resource = this.lookupResource(packet.src)
+                const method = resource.indexToMethod(packet.method)
+                const s = serde.stream(packet.payload)
+                const id = serde.Base128.deser(s)
+                s.rdx = 0
+                for (let i = 0; i < method.args.length; i++) {
+                    if (method.args[i].kind == 'stream' && method.args[i].id == id) {
+                        const data = method.args[i].serializer().deser(s)
+                        this.streams[packet.nonce][id].write(data)
+                        if (data.length == 0) {
+                            delete this.streams[packet.nonce][id]
+                            if (Object.keys(this.streams[packet.nonce]).length === 0) {
+                                delete this.streams[packet.nonce]
+                            }
+                        }
+                        break
+                    }
+                }
             } else if (packet.type == MessageType.ERROR) {
                 const error = new Error(serde.String.deser(serde.stream(packet.payload)))
                 if (packet.nonce in this.streams) {
@@ -293,9 +324,20 @@ export class Node extends Resource {
             return promise
         }
         const all = resource.methods()
-        const stream = serde.stream(1<<14)
+        const output = serde.stream(1<<14)
         const serializer = all[index].serializer()
-        serializer.ser([...args], stream)
+        const toSerialize = []
+        const streams = []
+        for (let i = 0; i < args.length; i++) {
+            const argType = all[index].args[i]
+            if (argType.kind == 'stream') {
+                toSerialize.push([typeArg.id, []])
+                streams.push({ id: typeArg.id, type: argType, stream: args[i] })
+            } else {
+                toSerialize.push(args[i])
+            }
+        }
+        serializer.ser([...toSerialize], output)
         const packet = {
             src: this.id,
             dest: dest,
@@ -304,12 +346,57 @@ export class Node extends Resource {
             type: all[index].methodKind == "msg" ? MessageType.MSG : MessageType.REQUEST,
             offset: 0, //TODO: handle fragmentation in the link
             size: 0, //TODO: calculate size for fragmentation
-            payload: stream.toArray()
+            payload: output.toArray()
         }
         if(packet.type == MessageType.REQUEST) {
             this.packets[packet.nonce] = { dest: packet.id, resolve, reject }
         }
         this.outbound(packet)
+        for (const s in streams) {
+            s.stream.onData((data) => {
+                const out = serde.stream(data.length + 8) //TODO: only works for bytes
+                s.type.serializer().ser([s.id, data], out)
+                this.outbound({
+                    src: this.id,
+                    dest: dest,
+                    nonce: packet.nonce,
+                    method: index,
+                    type: MessageType.REQUEST_STREAM,
+                    offset: 0, //TODO: handle fragmentation in the link
+                    size: 0, //TODO: calculate size for fragmentation
+                    payload: out.toArray()
+                })
+            })
+            s.stream.onError((e) => {
+                const msg = e.toString()
+                const out = serde.stream(1024)
+                serde.String.ser(msg, out)
+                this.outbound({
+                    src: this.id,
+                    dest: dest,
+                    nonce: packet.nonce,
+                    method: index,
+                    type: MessageType.ERROR,
+                    offset: 0, //TODO: handle fragmentation in the link
+                    size: 0,  //TODO: calculate size for fragmentation
+                    payload: out.toArray()
+                })
+            })
+            s.stream.onClose(() => {
+                const out = serde.stream(100)
+                s.type.serializer().ser([s.id, []], out)
+                this.outbound({
+                    src: this.id,
+                    dest: dest,
+                    nonce: packet.nonce,
+                    method: index,
+                    type: MessageType.REQUEST_STREAM,
+                    offset: 0, //TODO: handle fragmentation in the link
+                    size: 0, //TODO: calculate size for fragmentation
+                    payload: out.toArray()
+                })
+            })
+        }
         return promise
     }
 
@@ -455,6 +542,28 @@ export class LocalFS extends Resource {
             stream.close()
         })
         return stream        
+    }
+
+    put(path, stream) {
+        let handle = null
+        let callback = data => {
+            stream.onData(null)
+            handle.write().finally(() => {
+                stream.onData(callback)
+            })
+        }
+        fsPromises.open(path, "w").then(fileHandle => {
+            handle = fileHandle
+            stream.onData(callback)
+            stream.onClose(() => {
+                handle.close()
+            })
+            stream.onError((err) => {
+                console.error(err)
+                handle.close()
+                fsPromises.unlink(path)
+            })
+        })
     }
 }
 

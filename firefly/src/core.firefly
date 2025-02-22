@@ -123,6 +123,7 @@ proto KV {
 // Simple remote FS 
 proto FS {
     def get(path: String): Stream[0, byte]
+    def put(path: String, data: Stream[0, byte])
 }
 
 // Foreign network interface

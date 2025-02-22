@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import { v4 } from 'uuid'
 import { assert } from 'chai'
 import { decode } from 'node:punycode'
+import { Stream } from '../src/stream.js'
 
 const TestTimer = { 
     setInterval: function(interval, callback) {
@@ -109,5 +110,10 @@ describe("firefly cluster", () => {
         })
         await promise
         assert.deepEqual(buf, fs.readFileSync("../README.md").toString())
+    })
+
+    it("local fs should write file locally", async () => {
+        const stream = new Stream()
+        await
     })
 })

@@ -20,7 +20,9 @@ describe("firefly cluster", () => {
     const node2 = new ff.Node(ff.genId(), TestTimer)
     const kv1 = new ff.InMemoryKV(ff.genId(), node1)
     const kv2 = new ff.InMemoryKV(ff.genId(), node2)
+    const fs1 = new ff.LocalFS(ff.genId(), node1)
     node1.addResource(kv1)
+    node1.addResource(fs1)
     node2.addResource(kv2)
 
     const pair = ff.transportPair()
@@ -60,4 +62,35 @@ describe("firefly cluster", () => {
             assert.match(e.toString(), /.*Key ".*" not found in this kv/)
         }
     })
+
+    it("should read fs locally", async () => {
+        TestTimer.tick()
+        const fd = await node1.call(fs1.id, "open", "../README.md", "r")
+        const dec = new TextDecoder("utf-8")
+        let text = ""
+        while (true) {
+            const bytes = await node1.call(fs1.id, "read", fd, 1024)
+            text += dec.decode(bytes, { stream: true })
+            if (bytes.length == 0) break
+        }
+        text += dec.decode()
+        await node1.call(fs1.id, "close", fd)
+        assert.equal(text, fs.readFileSync("../README.md").toString())
+    })
+
+    it("should read fs remotely", async () => {
+        TestTimer.tick()
+        const fd = await node2.call(fs1.id, "open", "../README.md", "r")
+        const dec = new TextDecoder("utf-8")
+        let text = ""
+        while (true) {
+            const bytes = await node2.call(fs1.id, "read", fd, 1024)
+            text += dec.decode(bytes, { stream: true })
+            if (bytes.length == 0) break
+        }
+        text += dec.decode()
+        await node2.call(fs1.id, "close", fd)
+        assert.deepEqual(text, fs.readFileSync("../README.md").toString())
+    })
+
 })

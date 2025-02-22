@@ -120,6 +120,18 @@ proto KV {
     def put(key: String, value: Array[byte]): void
 }
 
+// Simple external file system
+proto FileSystem {
+    // open a file and keep a mapping in a table, return table's slot
+    def open(path: String): int
+    // read upto size bytes, short read doesn't indicate EOF, 0-sized does
+    def read(fd: int, size: int): Array[byte]
+    // write buf, reply once all bytes in buf had been written
+    def write(fd: int, buf: Array[byte])
+    // close the file mapping, free corresponding table's slot
+    def close(fd: int)
+}
+
 // Foreign network interface
 
 proto FNI {

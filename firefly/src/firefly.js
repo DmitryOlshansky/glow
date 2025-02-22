@@ -124,41 +124,47 @@ export class Node extends Resource {
     }
 
     inbound(packet) {
+        const onError = (e) => {
+            const errorStream = serde.stream(1<<14)
+            serde.String.ser(e.toString(), errorStream)
+            this.outbound({
+                src: packet.dest,
+                dest: packet.src,
+                nonce: packet.nonce,
+                method: packet.method,
+                type: MessageType.ERROR,
+                offset: 0,
+                size: 0,
+                payload: errorStream.toArray()
+            })
+        }
         if (packet.dest in this.resources) {
             if (packet.type == 1 || packet.type == 0) {
                 try {
                     const resource = this.resources[packet.dest]
                     const method = resource.indexToMethod(packet.method)
                     const args = method.serializer().deser(serde.stream(packet.payload))
-                    const ret = resource[method.name](...args)
-                    const respStream = serde.stream(1<<14)
-                    method.returnSerializer().ser(ret, respStream)
-                    // reply
-                    if (packet.type == 1) {
-                        this.outbound({
-                            src: resource.id,
-                            dest: packet.src,
-                            nonce: packet.nonce,
-                            method: packet.method,
-                            type: MessageType.REPLY,
-                            offset: 0,
-                            size: 0,
-                            payload: respStream.toArray()
-                        })
-                    }
+                    const ret = Promise.resolve(resource[method.name](...args))
+                    ret.then(value => {
+                        const respStream = serde.stream(1<<14)
+                        method.returnSerializer().ser(value, respStream)
+                        // reply
+                        if (packet.type == 1) {
+                            this.outbound({
+                                src: resource.id,
+                                dest: packet.src,
+                                nonce: packet.nonce,
+                                method: packet.method,
+                                type: MessageType.REPLY,
+                                offset: 0,
+                                size: 0,
+                                payload: respStream.toArray()
+                            })
+                        }
+                    }, onError)
+                    
                 } catch(e) {
-                    const errorStream = serde.stream(1<<14)
-                    serde.String.ser(e.toString(), errorStream)
-                    this.outbound({
-                        src: packet.dest,
-                        dest: packet.src,
-                        nonce: packet.nonce,
-                        method: packet.method,
-                        type: MessageType.ERROR,
-                        offset: 0,
-                        size: 0,
-                        payload: errorStream.toArray()
-                    })
+                    onError(e)
                 }
             } else if (packet.type == MessageType.REPLY) {
                 const resource = this.lookupResource(packet.src)
@@ -200,6 +206,9 @@ export class Node extends Resource {
             try {
                 const res = this.resources[dest]
                 const ret = res[method](...args)
+                if (typeof ret?.then == 'function') {
+                    return ret
+                }
                 resolve(ret)
             } catch(e) {
                 reject(e)

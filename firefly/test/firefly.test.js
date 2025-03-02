@@ -120,4 +120,22 @@ describe("firefly cluster", () => {
             }
         }
     })
+
+    it("should support calling method directly on node resource", async() => {
+        TestTimer.tick()
+        for (const id in node1.nodes) {
+            const payload = new Uint8Array([1, 2, 3])
+            console.log(node1.nodes[id])
+            const reply = await node1.nodes[id].ping(payload)
+            assert.deepEqual(reply, payload)
+        }
+    })
+
+    it("should support calling method directly on resource", async() => {
+        TestTimer.tick()
+        const payload = new Uint8Array([42])
+        await node2.nodes[node1.id].resources[kv1.id].put("node1-test", payload)
+        const rtt = await node2.nodes[node1.id].resources[kv1.id].get("node1-test")
+        assert.deepEqual(rtt, payload)
+    })
 })

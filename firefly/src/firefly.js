@@ -66,13 +66,24 @@ class Resource {
     }
 }
 
-class RemoteNode extends Resource {
+class RemoteResource extends Resource {
+    constructor(id, owner, node, proto) {
+        super(id, owner, proto)
+        for (const method of this.methods()) {
+            this[method.name] = (...args) => {
+                return node.call(id, method.name, ...args)
+            }
+        }
+    }
+}
+
+class RemoteNode extends RemoteResource {
     /*
         resource is a map of resources of this Node
     */
     resources;
-    constructor(id, resources) {
-        super(id, null, module.proto('Node'))
+    constructor(id, node, resources) {
+        super(id, null, node, module.proto('Node'))
         this.owner = this
         this.resources = resources
         this.resources[id] = this
@@ -178,7 +189,12 @@ export class Node extends Resource {
                 const entry = this.packets[packet.nonce]
                 delete this.packets[packet.nonce]
                 const error = new Error(serde.String.deser(serde.stream(packet.payload)))
-                entry.reject(error)
+                if (!entry) {
+                    console.error(error)
+                }
+                else {
+                    entry.reject(error)
+                }
             }
         } else {
             // TODO: here we select the right next hop if possible
@@ -188,7 +204,7 @@ export class Node extends Resource {
 
     addLink(to, transport) {
         const link = new Link(genId(), this, this.id, to, this.packetSerde, transport)
-        this.nodes[to] = new RemoteNode(to, {})
+        this.nodes[to] = new RemoteNode(to, this, {})
         this.links[to] = link
     }
 
@@ -310,8 +326,8 @@ export class Node extends Resource {
         const nodes = {}
         nodes[this.id] = this
         for (const rel of relations) {
-            if (!(rel.master in nodes)) nodes[rel.master] = new RemoteNode(rel.master, {})
-            nodes[rel.master].resources[rel.slave] = new Resource(rel.slave, nodes[rel.master], module.proto(rel.proto))
+            if (!(rel.master in nodes)) nodes[rel.master] = new RemoteNode(rel.master, this, {})
+            nodes[rel.master].resources[rel.slave] = new RemoteResource(rel.slave, nodes[rel.master], this, module.proto(rel.proto))
         }
         this.nodes = nodes
     }

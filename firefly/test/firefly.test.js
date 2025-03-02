@@ -108,4 +108,16 @@ describe("firefly cluster", () => {
             await fs.promises.unlink("../README.2.md")
         }
     })
+
+    it("should check arguments count to match the protocol", async() => {
+        TestTimer.tick()
+        for (const node of [node1, node2]) {
+            try {
+                await node1.call(kv2.id, "get", "first", "extra")
+                assert.fail("should throw")
+            } catch (e) {
+                assert.match(e.toString(), /Resource .* method 'get' expects 1 arguments but 2 were given/)
+            }
+        }
+    })
 })

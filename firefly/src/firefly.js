@@ -206,6 +206,17 @@ export class Node extends Resource {
         if (dest in this.resources) {
             try {
                 const res = this.resources[dest]
+                const index = res.methodToIndex(method)
+                if (index == -1) {
+                    reject(new Error(`Resource at ${dest} doesn't support ${method}`))
+                    return promise
+                }
+                const all = res.methods()
+                const argsSize = all[index].args.length
+                if (args.length != argsSize) {
+                    reject(new Error(`Resource at ${dest} method '${method}' expects ${argsSize} arguments but ${args.length} were given`))
+                    return promise
+                }
                 const ret = res[method](...args)
                 if (typeof ret?.then == 'function') {
                     return ret
@@ -227,6 +238,11 @@ export class Node extends Resource {
             return promise
         }
         const all = resource.methods()
+        const argsSize = all[index].args.length
+        if (args.length != argsSize) {
+            reject(new Error(`Resource at ${dest} method '${method}' expects ${argsSize} arguments but ${args.length} were given`))
+            return promise
+        }
         const stream = serde.stream(1<<14)
         const serializer = all[index].serializer()
         serializer.ser([...args], stream)

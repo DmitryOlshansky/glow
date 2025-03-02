@@ -93,4 +93,19 @@ describe("firefly cluster", () => {
         assert.deepEqual(text, fs.readFileSync("../README.md").toString())
     })
 
+    it("should write fs locally & remotely", async () => {
+        TestTimer.tick()
+        for (const node of [node1, node2]) {
+            const fd = await node.call(fs1.id, "open", "../README.2.md", "w")
+            const bytes = fs.readFileSync("../README.md")
+            for (let i = 0; i < Math.ceil(bytes.length / 1024); i ++) {
+                const slice = bytes.subarray(i * 1024, i * 1024 + 1024)
+                const resp = await node.call(fs1.id, "write", fd, slice)
+            }
+            await node.call(fs1.id, "close", fd)
+            const written = fs.readFileSync("../README.2.md")
+            assert.equal(written.toString(), bytes.toString())
+            await fs.promises.unlink("../README.2.md")
+        }
+    })
 })

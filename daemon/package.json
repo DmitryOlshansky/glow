@@ -1,0 +1,29 @@
+{
+  "name": "daemon",
+  "version": "0.0.1",
+  "description": "Node.js Node",
+  "main": "main.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/DmitryOlshansky/glow.git"
+  },
+  "keywords": [
+    "server",
+    "p2p",
+    "glow"
+  ],
+  "type": "module",
+  "author": "Dmitry Olshasky",
+  "license": "GPL-3.0-only",
+  "bugs": {
+    "url": "https://github.com/DmitryOlshansky/glow/issues"
+  },
+  "homepage": "https://github.com/DmitryOlshansky/glow/README.md",
+  "devDependencies": {
+    "chai": "^5.1.2",
+    "mocha": "^11.1.0"
+  }
+}

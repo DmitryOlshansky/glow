@@ -1,6 +1,5 @@
-import * as ff from '../src/firefly.js'
+import { cluster } from '../src/firefly.js'
 import * as fs from 'node:fs'
-import { v4 } from 'uuid'
 import { assert } from 'chai'
 
 const TestTimer = { 
@@ -16,13 +15,14 @@ const TestTimer = {
 }
 
 describe("firefly cluster", () => {
+    const protocolDefinition = fs.readFileSync("./src/core.firefly").toString()
+    const ff = cluster(protocolDefinition)
     const node1 = new ff.Node(ff.genId(), TestTimer)
     const node2 = new ff.Node(ff.genId(), TestTimer)
     const kv1 = new ff.InMemoryKV(ff.genId(), node1)
     const kv2 = new ff.InMemoryKV(ff.genId(), node2)
-    const fs1 = new ff.LocalFS(ff.genId(), node1)
+    
     node1.addResource(kv1)
-    node1.addResource(fs1)
     node2.addResource(kv2)
 
     const pair = ff.transportPair()
@@ -62,65 +62,7 @@ describe("firefly cluster", () => {
             assert.match(e.toString(), /.*Key ".*" not found in this kv/)
         }
     })
-
-    it("should read fs locally", async () => {
-        TestTimer.tick()
-        const fd = await node1.call(fs1.id, "open", "../README.md", "r")
-        const dec = new TextDecoder("utf-8")
-        let text = ""
-        while (true) {
-            const bytes = await node1.call(fs1.id, "read", fd, 1024)
-            text += dec.decode(bytes, { stream: true })
-            if (bytes.length == 0) break
-        }
-        text += dec.decode()
-        await node1.call(fs1.id, "close", fd)
-        assert.equal(text, fs.readFileSync("../README.md").toString())
-    })
-
-    it("should read fs remotely", async () => {
-        TestTimer.tick()
-        const fd = await node2.call(fs1.id, "open", "../README.md", "r")
-        const dec = new TextDecoder("utf-8")
-        let text = ""
-        while (true) {
-            const bytes = await node2.call(fs1.id, "read", fd, 1024)
-            text += dec.decode(bytes, { stream: true })
-            if (bytes.length == 0) break
-        }
-        text += dec.decode()
-        await node2.call(fs1.id, "close", fd)
-        assert.deepEqual(text, fs.readFileSync("../README.md").toString())
-    })
-
-    it("should write fs locally & remotely", async () => {
-        TestTimer.tick()
-        for (const node of [node1, node2]) {
-            const fd = await node.call(fs1.id, "open", "../README.2.md", "w")
-            const bytes = fs.readFileSync("../README.md")
-            for (let i = 0; i < Math.ceil(bytes.length / 1024); i ++) {
-                const slice = bytes.subarray(i * 1024, i * 1024 + 1024)
-                const resp = await node.call(fs1.id, "write", fd, slice)
-            }
-            await node.call(fs1.id, "close", fd)
-            const written = fs.readFileSync("../README.2.md")
-            assert.equal(written.toString(), bytes.toString())
-            await fs.promises.unlink("../README.2.md")
-        }
-    })
-
-    it("should check arguments count to match the protocol", async() => {
-        TestTimer.tick()
-        for (const node of [node1, node2]) {
-            try {
-                await node1.call(kv2.id, "get", "first", "extra")
-                assert.fail("should throw")
-            } catch (e) {
-                assert.match(e.toString(), /Resource .* method 'get' expects 1 arguments but 2 were given/)
-            }
-        }
-    })
-
+    
     it("should support calling method directly on node resource", async() => {
         TestTimer.tick()
         for (const id in node1.nodes) {
@@ -137,5 +79,18 @@ describe("firefly cluster", () => {
         await node2.nodes[node1.id].resources[kv1.id].put("node1-test", payload)
         const rtt = await node2.nodes[node1.id].resources[kv1.id].get("node1-test")
         assert.deepEqual(rtt, payload)
+    })
+
+
+    it("should check arguments count to match the protocol", async() => {
+        TestTimer.tick()
+        for (const node of [node1, node2]) {
+            try {
+                await node1.call(kv2.id, "get", "first", "extra")
+                assert.fail("should throw")
+            } catch (e) {
+                assert.match(e.toString(), /Resource .* method 'get' expects 1 arguments but 2 were given/)
+            }
+        }
     })
 })

@@ -206,6 +206,11 @@ export function cluster(protocolDefinition) {
             this.links[to] = link
         }
 
+        removeLink(to) {
+            delete this.links[to]
+            delete this.nodes[to]
+        }
+
         addResource(resource) {
             this.resources[resource.id] = resource
         }

@@ -1,12 +1,16 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const { type } = require('os');
 
 module.exports = {
     entry: './src/index.js',
     output: {
         filename: '[name].js',
         path: path.resolve(__dirname, 'dist'),
-        library: 'lib'
+        library: {
+            name: 'lib',
+            type: 'assign'
+        }
     },
     devtool: 'inline-source-map',
     devServer: {
@@ -15,8 +19,16 @@ module.exports = {
     plugins: [
         new HtmlWebpackPlugin({
             template: 'src/index.html'
-        })
+        }),
     ],
+    module: {
+        rules: [
+            {
+                test: /\.firefly$/,
+                type: 'asset/resource'
+            },
+        ]
+    },
     mode: 'development',
     optimization: {
         runtimeChunk: 'single'

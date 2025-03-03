@@ -1,18 +1,58 @@
-// IMPORTS
 import { SignalingChannel } from "./signaling-channel.js";
 import { WebrtcManager } from "./webrtc-manager.js";
-import { dataChannelHandler } from "./data-channel-handler.js";
-import { v4 } from 'uuid'
+import { cluster } from 'firefly/src/firefly'
+import protocol from 'firefly/src/core.firefly'
+import * as uuid from 'uuid'
 
-// CONSTANTS
 const SIGNALING_SERVER_URL = "http://localhost:3030"
 
-let PEER_ID = v4()
-
-// SETUP SIGNALING CHANNEL AND WEBRTC
+let ff = null
+let PEER_ID = null
 let channel = null
 let manager = null
+let ourNode = null
 
+const timer = {
+  setInterval: function(interval, callback) {
+      setInterval(callback, interval)
+  }
+}
+
+fetch(protocol).then(resp => {
+  return resp.text()
+}).then(text => {
+  ff = cluster(text)
+  PEER_ID = ff.genId()
+  ourNode = new ff.Node(PEER_ID, timer)
+})
+
+function dataChannelHandler(ourPeerId, peer) {
+  const peerId = uuid.parse(peer.peerId)
+  console.log("DATA channel handler", peerId)
+  const channel = peer.dataChannel
+  channel.binaryType = "arraybuffer"
+
+  const transport = {
+    onReceive: (handler) => {
+      channel.onmessage = (event) => {
+        console.log(`Recieved message ${event.data}`)
+        const { data } = event
+        handler(data)
+      }
+    },
+    send: (data) => channel.send(data)
+  }
+  channel.onopen = (event) => {
+      if (event.type === "open") {
+          console.log("Data channel with", peerId, "is open");
+          ourNode.addLink(peerId, transport)
+          channel.onclose = (e) => {
+            ourNode.removeLink(peerId)
+            console.log(`Channel with ${peerId} is closing `);
+        };;
+      }
+  };
+}
 
 export function login(e) {
   e.preventDefault();
@@ -24,21 +64,15 @@ export function login(e) {
   channel = new SignalingChannel(login, secret, PEER_ID, SIGNALING_SERVER_URL);
   let webrtcOptions = { enableDataChannel: true, enableStreams: false, dataChannelHandler };
   manager = new WebrtcManager(PEER_ID, channel, webrtcOptions, true);
-  channel.connect(); 
+  channel.connect();
   return false; 
 }
 
-export function message(e) {
+export async function message(e) {
   e.preventDefault();
-  const message = document.getElementById('input').value
-  console.log('sending message ', message)
-  for (const peer in manager.peers) {
-      manager.peers[peer].dataChannel.send(message);
+  for (const node in ourNode.nodes) {
+    const resp = await ourNode.nodes[node].ping(new Uint8Array([1,2,3]))
+    console.log("node", node, "resp ", resp)
   }
-  const messages = document.getElementById('messages')
-  const div = document.createElement('div')
-  div.innerHTML = `"${message}"`
-  messages.appendChild(div)
   return false;
 }
-

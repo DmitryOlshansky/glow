@@ -1,5 +1,5 @@
 import io from "socket.io-client"
-
+import * as uuid from 'uuid'
 /**
  * Class represeting the signaling channel used to establish WebRTC communication in a meshed network of peers.
  * Connects to the Signaling server and enables messaging to all peers or only one peer.
@@ -17,14 +17,14 @@ export class SignalingChannel {
      * @memberof SignalingChannel
      */
     constructor(login, secret, peerId, signalingServerUrl, verbose = false) {
-        this.peerId = peerId;
+        this.peerId = uuid.stringify(peerId);
         this.verbose = verbose;
         this.resetListeners();
         this.socket = new io(signalingServerUrl, {
             auth: { 
                 login,
                 secret,
-                peerId
+                peerId: this.peerId
             },
             autoConnect: false, // disables auto connection, by default the client would connect to the server as soon as the io() object is instatiated
             reconnection: true, // enables auto reconnection to server, this can occur when for example the host server disconnects. When set to true, the client would keep trying to reconnect

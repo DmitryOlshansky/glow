@@ -81,7 +81,6 @@ describe("firefly cluster", () => {
         assert.deepEqual(rtt, payload)
     })
 
-
     it("should check arguments count to match the protocol", async() => {
         TestTimer.tick()
         for (const node of [node1, node2]) {
@@ -91,6 +90,17 @@ describe("firefly cluster", () => {
             } catch (e) {
                 assert.match(e.toString(), /Resource .* method 'get' expects 1 arguments but 2 were given/)
             }
+        }
+    })
+
+    it("should fail to send if the link is removed", async() => {
+        TestTimer.tick()
+        node1.removeLink(node2.id)
+        try {
+            await node1.call(kv2.id, "get", "first")
+            assert.fail("Should fail during routing")
+        } catch(e) {
+            assert.match(e.toString(), /Address .* is unreachable/)
         }
     })
 })

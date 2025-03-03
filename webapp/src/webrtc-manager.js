@@ -39,6 +39,7 @@ export class WebrtcManager {
      */
     signalingMessageHandler(message) {
         const { from, payload } = message;
+        console.log("FROM", from)
         const { action, connections, bePolite, sdp, ice } = payload;
         switch (action) {
             case "open":
@@ -84,7 +85,7 @@ export class WebrtcManager {
         } else {
             // Add peer to the object of peers
             this.peers[peerId] = {
-                peerId,
+                peerId : peerId.toString(),
                 polite,
                 rtcPeerConnection: new RTCPeerConnection(this.config),
                 dataChannel: null,
@@ -102,7 +103,7 @@ export class WebrtcManager {
                     id: 0, // data channels created with the same id are connected to each other across peers
                 });
                 try {
-                    this.options.dataChannelHandler(this.ourPeerId, this.ourPeerType, this.peers[peerId]);
+                    this.options.dataChannelHandler(this.ourPeerId, this.peers[peerId]);
                 } catch (error) {
                     console.error(error);
                 }

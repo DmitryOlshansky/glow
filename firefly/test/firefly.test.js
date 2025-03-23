@@ -17,10 +17,10 @@ const TestTimer = {
 describe("firefly cluster", () => {
     const protocolDefinition = fs.readFileSync("./src/core.firefly").toString()
     const ff = cluster(protocolDefinition)
-    const node1 = new ff.Node(ff.genId(), TestTimer)
-    const node2 = new ff.Node(ff.genId(), TestTimer)
-    const kv1 = new ff.InMemoryKV(ff.genId(), node1)
-    const kv2 = new ff.InMemoryKV(ff.genId(), node2)
+    const node1 = new ff.Node(ff.genId(), TestTimer, "node1")
+    const node2 = new ff.Node(ff.genId(), TestTimer, "node2")
+    const kv1 = new ff.InMemoryKV(ff.genId(), node1, "kv1")
+    const kv2 = new ff.InMemoryKV(ff.genId(), node2, "kv2")
     
     node1.addResource(kv1)
     node2.addResource(kv2)
@@ -61,6 +61,18 @@ describe("firefly cluster", () => {
         } catch (e) {
             assert.match(e.toString(), /.*Key ".*" not found in this kv/)
         }
+    })
+
+    it("should propagate labels", async () => {
+        TestTimer.tick()
+        const res = []
+        for (const n in node1.nodes)  {
+            for (const r in node1.nodes[n].resources) {
+                res.push(node1.nodes[n].resources[r].label)
+            }
+        }
+        res.sort()
+        assert.deepEqual(res, ["kv1", "kv2", "node1", "node2"])
     })
     
     it("should support calling method directly on node resource", async() => {

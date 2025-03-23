@@ -31,10 +31,12 @@ export function cluster(protocolDefinition) {
         id; // UUID
         owner; // object of Resource type that owns this resource, this if Node
         proto; // protocol of this resource
-        constructor(id, owner, proto) {
+        label; // human-readable label
+        constructor(id, owner, proto, label) {
             this.id = id   
             this.owner = owner
             this.proto = proto
+            this.label = label
         }
     
         methods() {
@@ -65,8 +67,8 @@ export function cluster(protocolDefinition) {
     }    
 
     class RemoteResource extends Resource {
-        constructor(id, owner, node, proto) {
-            super(id, owner, proto)
+        constructor(id, owner, node, proto, label) {
+            super(id, owner, proto, label)
             for (const method of this.methods()) {
                 this[method.name] = (...args) => {
                     return node.call(id, method.name, ...args)
@@ -80,8 +82,8 @@ export function cluster(protocolDefinition) {
             resource is a map of resources of this Node
         */
         resources;
-        constructor(id, node, resources) {
-            super(id, null, node, module.proto('Node'))
+        constructor(id, node, resources, label) {
+            super(id, null, node, module.proto('Node'), label)
             this.owner = this
             this.resources = resources
             this.resources[id] = this
@@ -106,8 +108,8 @@ export function cluster(protocolDefinition) {
         // nonce counter
         nonceCounter;
 
-        constructor(id, timer) {
-            super(id, null, module.proto('Node'))
+        constructor(id, timer, label) {
+            super(id, null, module.proto('Node'), label)
             this.owner = this
             this.timer = timer
             this.resources = {}
@@ -200,9 +202,9 @@ export function cluster(protocolDefinition) {
             }
         }
 
-        addLink(to, transport) {
-            const link = new Link(genId(), this, this.id, to, this.packetSerde, transport)
-            this.nodes[to] = new RemoteNode(to, this, {})
+        addLink(to, transport, label) {
+            const link = new Link(genId(), this, this.id, to, this.packetSerde, transport, label)
+            this.nodes[to] = new RemoteNode(to, this, {}, to.toString())
             this.links[to] = link
         }
 
@@ -289,9 +291,9 @@ export function cluster(protocolDefinition) {
                 const relations = []
                 for (const resId in this.resources) {
                     const r = this.resources[resId]
-                    relations.push({ kind: 1, master: this.id, slave: r.id, proto: r.proto.name })
+                    relations.push({ kind: 1, master: this.id, slave: r.id, proto: r.proto.name, label: r.label })
                 }
-                this.call(this.nodes[id].id, "heartbeat", [], relations)
+                this.call(this.nodes[id].id, "heartbeat", [], this.label, relations)
             }
         }
 
@@ -325,11 +327,12 @@ export function cluster(protocolDefinition) {
             return data
         }
 
-        heartbeat(lsp, relations) {
+        heartbeat(lsp, label, relations) {
             for (const rel of relations) {
-                if (!(rel.master in this.nodes)) this.nodes[rel.master] = new RemoteNode(rel.master, this, {})
+                if (!(rel.master in this.nodes)) this.nodes[rel.master] = new RemoteNode(rel.master, this, {}, label)
+                this.nodes[rel.master].label = label
                 if (!(rel.slave in this.nodes[rel.master].resources)) {
-                    this.nodes[rel.master].resources[rel.slave] = new RemoteResource(rel.slave, this.nodes[rel.master], this, module.proto(rel.proto))
+                    this.nodes[rel.master].resources[rel.slave] = new RemoteResource(rel.slave, this.nodes[rel.master], this, module.proto(rel.proto), rel.label)
                 }
             }
         }
@@ -340,8 +343,8 @@ export function cluster(protocolDefinition) {
         from;
         to;
         packetSerde;
-        constructor(id, owner, from, to, packetSerde, transport) {
-            super(id, owner, module.proto('Link'))
+        constructor(id, owner, from, to, packetSerde, transport, label) {
+            super(id, owner, module.proto('Link'), label)
             this.from = from
             this.to = to
             this.packetSerde = packetSerde
@@ -363,8 +366,8 @@ export function cluster(protocolDefinition) {
 
     class InMemoryKV extends Resource {
         kv;
-        constructor(id, owner) {
-            super(id, owner, module.proto('KV'))
+        constructor(id, owner, label) {
+            super(id, owner, module.proto('KV'), label)
             this.kv = {}
         }
 

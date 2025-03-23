@@ -36,6 +36,7 @@ type Relation = struct {
     proto: String                       // proto of a slave resource
     master: Id                          // master is a resource who uses or owns slave
     slave: Id                           // slave is a resource used or owner by master
+    label: String                       // human-readable name of resource
 }
 
 // Firefly Network packet
@@ -80,7 +81,7 @@ proto Node {
     // First case - if there is any change detected in state (by rev field) - flooded to all neighbours except this one
     // Second case - if a new node is discovered - floods to the new node
     // (both could apply)
-    msg heartbeat(links: Array[LSP], resources: Array[Relation])
+    msg heartbeat(links: Array[LSP], label: String, resources: Array[Relation])
 
     // label is a human-readable name (must follow a convention and be node-wide unique)
     def create(label: String, type: Id): Id

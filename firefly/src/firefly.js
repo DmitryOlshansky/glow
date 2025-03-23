@@ -2,7 +2,7 @@ import { FireFly } from "./type.js"
 import { ProtoCompiler } from "./compiler.js"
 import * as peg from "./peg.js"
 import * as serde from "./serde.js"
-import { v4 } from 'uuid'
+import * as uuid from 'uuid'
 
 export const MessageType = {
     MSG: 0,
@@ -395,7 +395,10 @@ export function cluster(protocolDefinition) {
 
     function genId() {
         const buf = new Uint8Array(new ArrayBuffer(16))
-        v4({}, buf, 0)
+        uuid.v4({}, buf, 0)
+        buf.toString = function(){
+            return uuid.stringify(this)
+        }
         return buf
     }
 

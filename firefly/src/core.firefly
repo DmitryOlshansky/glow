@@ -1,5 +1,6 @@
 // May change in future
-type Id = Array[byte, 16]             // Firefly address, 128 bit unique identifier usually UUID
+// Built-in in JS because it is used as key
+// type Id = Array[byte, 16]             // Firefly address, 128 bit unique identifier usually UUID
 
 type Addr = Id
 

@@ -1,4 +1,5 @@
 import * as serde from "./serde.js"
+import { stringify } from "uuid"
 
 export class TypeSystem {
     constructor() {
@@ -61,6 +62,18 @@ export const Byte = new Primitive(serde.Byte)
 export const Int = new Primitive(serde.Base128)
 
 export const String = new Primitive(serde.String)
+
+export const Id = new Primitive(
+    new serde.Serializer((v, s) => {
+        serde.ByteArray(16).ser(v, s)
+    }, s => {
+        const v = serde.ByteArray(16).deser(s)
+        v.toString = function() {
+            return stringify(this)
+        }
+        return v
+    })
+)
 
 export class Generic extends Type {
     constructor(instantiate) {
@@ -224,5 +237,6 @@ export function FireFly(){
     ts.register("int", Int)
     ts.register("String", String)
     ts.register("Array", GenericArray)
+    ts.register("Id", Id)
     return ts
 }

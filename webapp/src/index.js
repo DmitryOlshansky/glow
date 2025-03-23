@@ -25,8 +25,12 @@ function fileCallback(event, path, file) {
       type: "application/octet-stream"
     })
     const uri = URL.createObjectURL(blob)    
-    $('#' + PEER_ID.toString().replaceAll(",", "-")).append($(
-      `<a href="${uri}">${path}</a>`
+    $('#' + PEER_ID.toString()).append($(
+      `<div class="row">
+      <div class="col">
+      <a href="${uri}">${path}</a>
+      </div>
+      </div>`
     ))
   }
 }
@@ -87,6 +91,9 @@ fetch(protocol).then(resp => {
 
 function dataChannelHandler(ourPeerId, peer) {
   const peerId = uuid.parse(peer.peerId)
+  peerId.toString = function() {
+    return uuid.stringify(this)
+  }
   console.log("DATA channel handler", peerId)
   const channel = peer.dataChannel
   channel.binaryType = "arraybuffer"
@@ -112,6 +119,7 @@ function dataChannelHandler(ourPeerId, peer) {
       }
   };
 }
+$('#name').val("Dmitry")
 $('#login').val("ad@yandex.ru")
 $('#secret').val("123")
 
@@ -135,16 +143,16 @@ export function login(e) {
 async function updateNodes() {
   for (const node in ourNode.nodes) {
     let found = false
-    let id = node.replaceAll(",", "-")
-    for (const el of $("#node-explorer").children()) {
+    let id = node
+    for (const el of $("#nodes").children()) {
       if ($(el).attr('id') == id) found = true
     }
     if (!found) {
       let color = null
       if (node == ourNode.id) color = "green"
       else color = "black"
-      $('#node-explorer').append($(`
-        <div clas="col" id="${id}">
+      $('#nodes').append($(`
+        <div clas="col" id="${id}" style="width:300px">
           <h3 style="color:${color};text-align:center">${id}</h3>
           <form>
             <input type="file" class="form-control upload"/>
@@ -167,7 +175,7 @@ async function updateNodes() {
           console.log("Read file", reader.result.byteLength)
           const file = new Uint8Array(reader.result)
           const chunks = Math.ceil(file.length / 8096)
-          for (let i = 0; i < chunks; i+= 8096) {
+          for (let i = 0; i < chunks; i+= 1) {
             const chunk = file.subarray(i * 8096, (i+1) * 8096)
             await fs.write(fd, chunk)
           }

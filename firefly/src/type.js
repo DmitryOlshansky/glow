@@ -63,11 +63,13 @@ export const Int = new Primitive(serde.Base128)
 
 export const String = new Primitive(serde.String)
 
+const b16 = serde.ByteArray(16)
+
 export const Id = new Primitive(
     new serde.Serializer((v, s) => {
-        serde.ByteArray(16).ser(v, s)
+        b16.ser(v, s)
     }, s => {
-        const v = serde.ByteArray(16).deser(s)
+        const v = b16.deser(s)
         v.toString = function() {
             return stringify(this)
         }

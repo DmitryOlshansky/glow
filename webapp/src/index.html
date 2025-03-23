@@ -17,6 +17,13 @@
         <form onsubmit="return lib.login(event)" id="login-form">
           <div class="row mb-4 d-flex justify-content-center">
             <div class="form-outline" style="width: 300px;">
+              <label class="form-label" for="name">Name</label>
+              <input class="form-control" type="text" id="name">
+            </div>
+
+          </div>
+          <div class="row mb-4 d-flex justify-content-center">
+            <div class="form-outline" style="width: 300px;">
               <label class="form-label" for="login">Email</label>
               <input class="form-control" type="email" id="login">
             </div>
@@ -34,7 +41,7 @@
         </form>
     <div id="node-explorer" style="display: none;">
     <h2 style="text-align: center">Nodes</h2>
-    <div class="row" id="nodes">
+    <div class="row d-flex justify-content-center" id="nodes">
       
     </div>
     </div>

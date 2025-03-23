@@ -326,13 +326,12 @@ export function cluster(protocolDefinition) {
         }
 
         heartbeat(lsp, relations) {
-            const nodes = {}
-            nodes[this.id] = this
             for (const rel of relations) {
-                if (!(rel.master in nodes)) nodes[rel.master] = new RemoteNode(rel.master, this, {})
-                nodes[rel.master].resources[rel.slave] = new RemoteResource(rel.slave, nodes[rel.master], this, module.proto(rel.proto))
+                if (!(rel.master in this.nodes)) this.nodes[rel.master] = new RemoteNode(rel.master, this, {})
+                if (!(rel.slave in this.nodes[rel.master].resources)) {
+                    this.nodes[rel.master].resources[rel.slave] = new RemoteResource(rel.slave, this.nodes[rel.master], this, module.proto(rel.proto))
+                }
             }
-            this.nodes = nodes
         }
     }
 

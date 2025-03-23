@@ -79,7 +79,6 @@ describe("firefly cluster", () => {
         TestTimer.tick()
         for (const id in node1.nodes) {
             const payload = new Uint8Array([1, 2, 3])
-            console.log(node1.nodes[id])
             const reply = await node1.nodes[id].ping(payload)
             assert.deepEqual(reply, payload)
         }

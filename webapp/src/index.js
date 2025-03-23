@@ -129,6 +129,8 @@ export function login(e) {
   console.log(document.getElementById('login'));
   const login = document.getElementById('login').value;
   const secret = document.getElementById('secret').value;
+  const label = document.getElementById("name").value;
+  ourNode.label = label;
   console.log('Peer id:', PEER_ID)
   channel = new SignalingChannel(login, secret, PEER_ID, SIGNALING_SERVER_URL);
   let webrtcOptions = { enableDataChannel: true, enableStreams: false, dataChannelHandler };
@@ -141,19 +143,27 @@ export function login(e) {
 }
 
 async function updateNodes() {
+  for (const el of $("#nodes").children()) {
+    let found = false
+    for (const id in ourNode.nodes) {
+      if ($(el).attr('id') == id) found = true
+    }
+    if (!found) $(el).remove()
+  }
   for (const node in ourNode.nodes) {
     let found = false
     let id = node
     for (const el of $("#nodes").children()) {
       if ($(el).attr('id') == id) found = true
     }
+    console.log(node)
     if (!found) {
       let color = null
       if (node == ourNode.id) color = "green"
       else color = "black"
       $('#nodes').append($(`
         <div clas="col" id="${id}" style="width:300px">
-          <h3 style="color:${color};text-align:center">${id}</h3>
+          <h3 style="color:${color};text-align:center">${ourNode.nodes[id].label}</h3>
           <form>
             <input type="file" class="form-control upload"/>
           </form>

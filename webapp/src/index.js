@@ -175,7 +175,10 @@ async function updateNodes() {
           if (res == node) continue
           fs = ourNode.nodes[node].resources[res]
         }
-        console.log(fs)
+
+        $('#'+id).append($(`<div class="progress">
+          <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>`))
         const file = e.target.files[0]
         if(!file) return
         const name = file.name
@@ -185,10 +188,15 @@ async function updateNodes() {
           console.log("Read file", reader.result.byteLength)
           const file = new Uint8Array(reader.result)
           const chunks = Math.ceil(file.length / 8096)
+          const pb = $('#'+id).find(".progress-bar")
           for (let i = 0; i < chunks; i+= 1) {
             const chunk = file.subarray(i * 8096, (i+1) * 8096)
+            pb.css("width",  Math.ceil(i * 100 / chunks) + "%")
+            pb.prop("aria-valuenow", Math.ceil(i * 100 / chunks))
             await fs.write(fd, chunk)
           }
+          pb.css("width",  "100%")
+          pb.prop("aria-valuenow", 100)
           await fs.close(fd)
         }
         reader.onerror = () => {

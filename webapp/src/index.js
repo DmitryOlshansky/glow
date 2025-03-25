@@ -119,10 +119,11 @@ function dataChannelHandler(ourPeerId, peer) {
       }
   };
 }
+/*
 $('#name').val("Dmitry")
 $('#login').val("ad@yandex.ru")
 $('#secret').val("123")
-
+*/
 export function login(e) {
   e.preventDefault();
   console.log('Connecting...');

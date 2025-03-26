@@ -5,7 +5,13 @@ import protocol from 'firefly/src/core.firefly'
 import * as uuid from 'uuid'
 import $ from 'jquery'
 
-const SIGNALING_SERVER_URL = "http://localhost:3030"
+let SIGNALING_SERVER_URL = null
+
+if (process.env.NODE_ENV !== 'production') {
+  SIGNALING_SERVER_URL = "http://localhost:3030"
+} else {
+  SIGNALING_SERVER_URL = "https://glow.olshansky.me/signaling"
+}
 
 let ff = null
 let PEER_ID = null
